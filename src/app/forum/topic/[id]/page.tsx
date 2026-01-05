@@ -23,11 +23,21 @@ type TopicPageProps = {
 
 function fmtDateSmart(value?: string | number | null) {
   if (value == null) return "";
-  const numeric = typeof value === "string" ? Number(value) : value;
-  if (!Number.isFinite(numeric)) return "";
-  const millis = numeric < 1_000_000_000_000 ? numeric * 1000 : numeric;
-  const date = new Date(millis);
-  return Number.isNaN(+date) ? "" : date.toLocaleString();
+  // number: seconds or millis
+  if (typeof value === "number") {
+    const millis = value < 1_000_000_000_000 ? value * 1000 : value;
+    const d = new Date(millis);
+    return Number.isNaN(+d) ? "" : d.toLocaleString();
+  }
+  // string: try numeric then ISO/date string
+  const asNum = Number(value);
+  if (Number.isFinite(asNum)) {
+    const millis = asNum < 1_000_000_000_000 ? asNum * 1000 : asNum;
+    const d = new Date(millis);
+    return Number.isNaN(+d) ? "" : d.toLocaleString();
+  }
+  const d = new Date(value);
+  return Number.isNaN(+d) ? "" : d.toLocaleString();
 }
 
 function stripHtml(input: string) {

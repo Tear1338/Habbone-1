@@ -5,6 +5,7 @@ import { authOptions } from "@/auth";
 import { createNewsComment } from "@/server/directus-service";
 import { buildError, formatZodError } from "@/types/api";
 import sanitizeHtml from "sanitize-html";
+import { checkRateLimit } from '@/server/rate-limit'
 
 const BodySchema = z.object({
   content: z
@@ -29,6 +30,15 @@ export async function POST(
     return NextResponse.json(buildError("Identifiant article invalide", { code: "INVALID_ID" }), {
       status: 400,
     });
+  }
+
+  // Limit comment posting: 10 comments / 10 minutes per IP
+  const rl = checkRateLimit(req, { key: 'news:comment', limit: 10, windowMs: 10 * 60 * 1000 })
+  if (!rl.ok) {
+    return NextResponse.json(
+      buildError('Trop de requêtes, réessayez plus tard.', { code: 'RATE_LIMITED' }),
+      { status: 429, headers: rl.headers }
+    )
   }
 
   const session = await getServerSession(authOptions);

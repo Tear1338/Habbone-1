@@ -11,12 +11,22 @@ import {
 import { getHabboUserByNameForHotel } from '@/lib/habbo';
 import { RegisterBodySchema, formatZodError, buildError } from '@/types/api';
 import { computeVerificationExpiry, generateVerificationCode } from '@/lib/verification';
+import { checkRateLimit } from '@/server/rate-limit'
 import * as logger from '@/server/logger';
 
 const RETURN_VERIFICATION_CODE = String(process.env.RETURN_VERIFICATION_CODE || 'true').toLowerCase() !== 'false';
 
 export async function POST(req: Request) {
   try {
+    // Basic rate limit: 5 attempts / 10 minutes per IP
+    const rl = checkRateLimit(req, { key: 'register', limit: 5, windowMs: 10 * 60 * 1000 })
+    if (!rl.ok) {
+      return NextResponse.json(
+        buildError('Trop de requêtes, réessayez plus tard.', { code: 'RATE_LIMITED' }),
+        { status: 429, headers: rl.headers }
+      )
+    }
+
     const raw = await req.json();
     const parsed = RegisterBodySchema.safeParse({
       nick: String((raw?.nick ?? raw?.username ?? raw?.pseudo ?? raw?.Nick ?? '')).trim(),
@@ -39,16 +49,16 @@ export async function POST(req: Request) {
       return NextResponse.json(buildError('Ce pseudo est déjà pris pour cet hôtel.', { code: 'NICK_TAKEN' }), { status: 409 });
     }
 
-    // Ãtape 1: VÃ©rifier l'existence du joueur via Habbo API (minimiser les appels)
+    // Étape 1: Vérifier l'existence du joueur via Habbo API (minimiser les appels)
     let habboCore: any;
     try {
       habboCore = await getHabboUserByNameForHotel(n, hotelCode);
     } catch (e: any) {
-      // 404 ou autre -> on bloque l'inscription si le pseudo n'existe pas cÃ´tÃ© Habbo
+      // 404 ou autre -> on bloque l'inscription si le pseudo n'existe pas côté Habbo
       const msg = e?.message || '';
       const notFound = /404/.test(msg);
       return NextResponse.json(
-        buildError(notFound ? "Ce pseudo n'existe pas sur Habbo." : 'VÃ©rification Habbo indisponible, rÃ©essayez plus tard.', { code: notFound ? 'HABBO_NOT_FOUND' : 'HABBO_UNAVAILABLE' }),
+        buildError(notFound ? "Ce pseudo n'existe pas sur Habbo." : 'Vérification Habbo indisponible, réessayez plus tard.', { code: notFound ? 'HABBO_NOT_FOUND' : 'HABBO_UNAVAILABLE' }),
         { status: notFound ? 400 : 502 }
       );
     }
@@ -65,7 +75,7 @@ export async function POST(req: Request) {
       code: verificationCode,
     });
 
-    // Ãtape 2: CrÃ©er l'utilisateur local
+    // Étape 2: Créer l'utilisateur local
     const user = await createUser({
       nick: n,
       senha: p,
@@ -102,7 +112,7 @@ export async function POST(req: Request) {
       logger.warn('[register] unable to re-fetch user after creation', { message: (logError as any)?.message || String(logError) });
     }
 
-    // Ãtape 3: Stocker un snapshot basique (best-effort, n'Ã©choue pas l'inscription)
+    // Étape 3: Stocker un snapshot basique (best-effort, n'échoue pas l'inscription)
     void tryUpdateHabboSnapshotForUser(Number((user as any).id), habboCore);
 
     const payload: any = {
@@ -121,7 +131,7 @@ export async function POST(req: Request) {
     const message = e?.message || 'Erreur serveur';
     const uniqueNick = /UNIQUE constraint failed|duplicate key value/i.test(message);
     if (uniqueNick) {
-      return NextResponse.json(buildError('Ce compte Habbo est dÃ©jÃ  liÃ© Ã  un utilisateur.', { code: 'HABBO_ALREADY_LINKED' }), {
+      return NextResponse.json(buildError('Ce compte Habbo est déjà lié à un utilisateur.', { code: 'HABBO_ALREADY_LINKED' }), {
         status: 409,
       });
     }

@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth'
 import { z } from 'zod'
 import { authOptions } from '@/auth'
 import { uploadFileToDirectus, createStoryRow, countStoriesThisMonthByAuthor } from '@/server/directus-service'
+import { checkRateLimit } from '@/server/rate-limit'
 import { buildError, formatZodError } from '@/types/api'
 
 const ALLOWED_MIME_SET = new Set(['image/png', 'image/jpeg', 'image/gif'])
@@ -17,6 +18,12 @@ const StoryUploadSchema = z.object({
 
 export async function POST(req: Request): Promise<NextResponse> {
   try {
+    // Limit uploads: 5 uploads / 10 minutes per IP
+    const rl = checkRateLimit(req, { key: 'stories:upload', limit: 5, windowMs: 10 * 60 * 1000 })
+    if (!rl.ok) {
+      return NextResponse.json({ error: 'Trop de requêtes', code: 'RATE_LIMITED' }, { status: 429, headers: rl.headers })
+    }
+
     const session = await getServerSession(authOptions)
     const user = session?.user as { nick?: string | null } | undefined
     const nick = typeof user?.nick === 'string' ? user.nick.trim() : ''

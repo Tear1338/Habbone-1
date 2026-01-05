@@ -4,6 +4,7 @@ import { authOptions } from '@/auth'
 import sanitizeHtml from 'sanitize-html'
 import { z } from 'zod'
 import { createForumComment } from '@/server/directus-service'
+import { checkRateLimit } from '@/server/rate-limit'
 import { buildError, formatZodError } from '@/types/api'
 
 const BodySchema = z.object({
@@ -20,6 +21,15 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   const topicId = Number(id || 0)
   if (!Number.isFinite(topicId) || topicId <= 0) {
     return NextResponse.json(buildError('Identifiant sujet invalide', { code: 'INVALID_ID' }), { status: 400 })
+  }
+
+  // Limit comment posting: 10 comments / 10 minutes per IP
+  const rl = checkRateLimit(req, { key: 'forum:comment', limit: 10, windowMs: 10 * 60 * 1000 })
+  if (!rl.ok) {
+    return NextResponse.json(
+      buildError('Trop de requêtes, réessayez plus tard.', { code: 'RATE_LIMITED' }),
+      { status: 429, headers: rl.headers }
+    )
   }
 
   const session = await getServerSession(authOptions)
@@ -55,4 +65,3 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     return NextResponse.json(buildError('Echec de publication', { code: 'CREATE_FAILED' }), { status: 500 })
   }
 }
-

@@ -6,11 +6,21 @@ import {
   
   export const revalidate = 30;
   
-  // gère timestamps en secondes ou millisecondes
+  // gère timestamps (secondes, millisecondes) et chaînes ISO
   function fmtDateSmart(v?: string | number | null) {
     if (v == null) return '';
-    const n = typeof v === 'string' ? Number(v) : v;
-    const d = new Date(n && n < 1e12 ? n * 1000 : n);
+    if (typeof v === 'number') {
+      const ms = v < 1e12 ? v * 1000 : v;
+      const d = new Date(ms);
+      return isNaN(+d) ? '' : d.toLocaleString();
+    }
+    const n = Number(v);
+    if (Number.isFinite(n)) {
+      const ms = n < 1e12 ? n * 1000 : n;
+      const d = new Date(ms);
+      return isNaN(+d) ? '' : d.toLocaleString();
+    }
+    const d = new Date(v);
     return isNaN(+d) ? '' : d.toLocaleString();
   }
   

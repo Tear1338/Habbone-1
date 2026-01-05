@@ -3,11 +3,21 @@ import { VerificationRegenerateSchema, formatZodError, buildError } from '@/type
 import { getUserByNick, listUsersByNick, normalizeHotelCode, updateUserVerification } from '@/server/directus-service'
 import { computeVerificationExpiry, generateVerificationCode } from '@/lib/verification'
 import * as logger from '@/server/logger'
+import { checkRateLimit } from '@/server/rate-limit'
 
 const RETURN_VERIFICATION_CODE = String(process.env.RETURN_VERIFICATION_CODE || 'true').toLowerCase() !== 'false';
 
 export async function POST(req: Request) {
   try {
+    // Basic rate limit: 10 requests / 10 minutes per IP
+    const rl = checkRateLimit(req, { key: 'verify:regenerate', limit: 10, windowMs: 10 * 60 * 1000 })
+    if (!rl.ok) {
+      return NextResponse.json(
+        buildError('Trop de requêtes, réessayez plus tard.', { code: 'RATE_LIMITED' }),
+        { status: 429, headers: rl.headers }
+      )
+    }
+
     const raw = await req.json().catch(() => ({}))
     const parsed = VerificationRegenerateSchema.safeParse({
       nick: raw?.nick,
@@ -34,7 +44,10 @@ export async function POST(req: Request) {
         return NextResponse.json(buildError('Utilisateur introuvable', { code: 'NOT_FOUND' }), { status: 404 })
       }
       if (users.length > 1) {
-        return NextResponse.json(buildError('Plusieurs comptes existent pour ce pseudo, prÃ©cise un hôtel ', { code: 'HOTEL_REQUIRED' }), { status: 409 })
+        return NextResponse.json(
+          buildError('Plusieurs comptes existent pour ce pseudo, précise un hôtel', { code: 'HOTEL_REQUIRED' }),
+          { status: 409 },
+        )
       }
       user = users[0]
     }
@@ -45,7 +58,7 @@ export async function POST(req: Request) {
 
     const status = String((user as any)?.habbo_verification_status || '')
     if (status === 'locked') {
-      return NextResponse.json(buildError('VÃ©rification verrouillÃ©e.', { code: 'LOCKED' }), { status: 423 })
+      return NextResponse.json(buildError('Vérification verrouillée.', { code: 'LOCKED' }), { status: 423 })
     }
     if (status === 'ok') {
       return NextResponse.json({ ok: true, code: null, expiresAt: null, alreadyVerified: true })
