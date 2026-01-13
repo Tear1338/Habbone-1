@@ -6,6 +6,9 @@ import { usePathname, useRouter } from 'next/navigation'
 import { motion, useReducedMotion } from 'framer-motion'
 import { dur, easings } from '@/lib/motion-tokens'
 import { toastError, toastSuccess } from '@/lib/sonner'
+import { cachedValue } from '@/lib/client-cache'
+import { useHabboProfile } from '@/lib/use-habbo-profile'
+import type { HabboProfileResponse } from '@/types/habbo'
 import TopBar from './header/TopBar'
 import Banner from './header/Banner'
 import UserBarLeft from './header/UserBarLeft'
@@ -17,6 +20,14 @@ import StoryUploadModal from './header/StoryUploadModal'
 type LoginPayload = {
   nick: string
   password: string
+}
+
+function resolveHabboLevel(payload?: HabboProfileResponse | null) {
+  const userLevel = payload?.user?.currentLevel
+  if (typeof userLevel === 'number') return userLevel
+  const profile = payload?.profile as { currentLevel?: number } | null
+  const profileLevel = profile?.currentLevel
+  return typeof profileLevel === 'number' ? profileLevel : null
 }
 
 export default function HeaderTW() {
@@ -34,6 +45,16 @@ export default function HeaderTW() {
   const slow = useMemo(() => ({ duration: reduce ? dur.xs : dur.lg, ease: easings.emph as any }), [reduce])
   const menuRef = useRef<HTMLDivElement>(null)
   const closeBtnRef = useRef<HTMLButtonElement>(null)
+  const habboLiteTtlMs = 30_000
+  const moedasTtlMs = 15_000
+  const sessionNick = (session?.user as any)?.nick as string | undefined
+  const onProfilePage = pathname.startsWith('/profile')
+  const { data: habboLite } = useHabboProfile(sessionNick || '', {
+    lite: true,
+    enabled: status === 'authenticated' && !!sessionNick && !onProfilePage,
+    cacheTtlMs: habboLiteTtlMs,
+    fallbackMessage: 'Erreur de récupération du profil',
+  })
 
   useEffect(() => { setMounted(true) }, [])
 
@@ -83,63 +104,60 @@ export default function HeaderTW() {
   }, [menuOpen])
 
   useEffect(() => {
-    const nick = (session?.user as any)?.nick as string | undefined
-    if (status !== 'authenticated' || !nick) return
+    if (status !== 'authenticated' || !sessionNick) return
+    if (!onProfilePage || typeof window === 'undefined') return
     let cancelled = false
 
-    const onProfilePage = pathname.startsWith('/profile')
-    if (onProfilePage && typeof window !== 'undefined') {
-      try {
-        const fromWindow: any = (window as any).__habboProfile
-        const lvl = (fromWindow?.user?.currentLevel ?? fromWindow?.profile?.currentLevel ?? (window as any).__habboLevel ?? null)
-        if (typeof lvl === 'number') setLevel(lvl)
-      } catch {}
-      const handler = (event: any) => {
-        if (cancelled) return
-        try {
-          const detail = event?.detail
-          const lvl = (detail?.user?.currentLevel ?? detail?.profile?.currentLevel ?? null)
-          setLevel(typeof lvl === 'number' ? lvl : null)
-        } catch {}
-      }
-      window.addEventListener('habbo:profile', handler as any)
-      ;(async () => {
-        try {
-          const response = await fetch('/api/user/moedas', { cache: 'no-store' })
-          const payload = await response.json().catch(() => null)
-          if (!cancelled && response.ok) {
-            const value = typeof payload?.moedas === 'number' ? payload.moedas : Number(payload?.moedas || 0)
-            setCoins(Number.isFinite(value) ? value : null)
-          }
-        } catch {}
-      })()
-      return () => {
-        cancelled = true
-        try { window.removeEventListener('habbo:profile', handler as any) } catch {}
-      }
-    }
+    try {
+      const fromWindow = window.__habboProfile
+      const lvl = resolveHabboLevel(fromWindow) ?? window.__habboLevel ?? null
+      if (typeof lvl === 'number') setLevel(lvl)
+    } catch {}
 
+    const handler = (event: WindowEventMap["habbo:profile"]) => {
+      if (cancelled) return
+      try {
+        const detail = event?.detail
+        const lvl = resolveHabboLevel(detail ?? null)
+        setLevel(typeof lvl === 'number' ? lvl : null)
+      } catch {}
+    }
+    window.addEventListener('habbo:profile', handler)
+    return () => {
+      cancelled = true
+      try { window.removeEventListener('habbo:profile', handler) } catch {}
+    }
+  }, [status, sessionNick, onProfilePage])
+
+  useEffect(() => {
+    if (onProfilePage) return
+    if (!habboLite) return
+    const lvl = resolveHabboLevel(habboLite ?? null)
+    setLevel(typeof lvl === 'number' ? lvl : null)
+  }, [habboLite, onProfilePage])
+
+  useEffect(() => {
+    if (status !== 'authenticated' || !sessionNick) return
+    let cancelled = false
     ;(async () => {
       try {
-        const response = await fetch(`/api/habbo/profile?name=${encodeURIComponent(nick)}&lite=1`, { cache: 'no-store' })
-        const payload: any = await response.json().catch(() => null)
-        if (!cancelled && response.ok) {
-          const lvl = (payload?.user?.currentLevel ?? payload?.profile?.currentLevel ?? null)
-          setLevel(typeof lvl === 'number' ? lvl : null)
-        }
-      } catch {}
-      try {
-        const response = await fetch('/api/user/moedas', { cache: 'no-store' })
-        const payload = await response.json().catch(() => null)
-        if (!cancelled && response.ok) {
-          const value = typeof payload?.moedas === 'number' ? payload.moedas : Number(payload?.moedas || 0)
+        const payload = await cachedValue(`moedas:${sessionNick}`, moedasTtlMs, async () => {
+          const response = await fetch('/api/user/moedas', { cache: 'no-store' })
+          const json = await response.json().catch(() => null)
+          if (!response.ok) {
+            const msg = (json as any)?.error || 'MOEDAS_FETCH_FAILED'
+            throw new Error(msg)
+          }
+          return json
+        })
+        if (!cancelled) {
+          const value = typeof (payload as any)?.moedas === 'number' ? (payload as any).moedas : Number((payload as any)?.moedas || 0)
           setCoins(Number.isFinite(value) ? value : null)
         }
       } catch {}
     })()
-
     return () => { cancelled = true }
-  }, [status, session?.user, pathname])
+  }, [status, sessionNick])
 
   const handleLogin = useCallback(async ({ nick, password }: LoginPayload) => {
     const trimmedNick = nick.trim()

@@ -5,9 +5,10 @@ import {
   markUserAsVerified,
   normalizeHotelCode,
   updateUserVerification,
-} from '@/server/directus-service'
-import { getHabboUserByIdForHotel, getHabboUserByNameForHotel } from '@/lib/habbo'
+} from '@/server/directus/users'
+import { getHabboUserByIdForHotel, getHabboUserByNameForHotel } from '@/server/habbo-cache'
 import { isVerificationExpired } from '@/lib/verification'
+import { parseTimestamp } from '@/lib/date-utils'
 import * as logger from '@/server/logger'
 import { checkRateLimit } from '@/server/rate-limit'
 
@@ -98,7 +99,9 @@ export async function POST(req: Request) {
     }
 
     const normalizedExpiresAt = expiresAt && (expiresAt.endsWith('Z') || /[+-]\d\d:?\d\d$/.test(expiresAt) ? expiresAt : `${expiresAt}Z`)
-    const expiresAtMs = normalizedExpiresAt ? Date.parse(normalizedExpiresAt) : null
+    const expiresAtMs = normalizedExpiresAt
+      ? parseTimestamp(normalizedExpiresAt, { numeric: 'ms', numericString: 'parse' })
+      : null
     logger.info('[verify/status] expires delta', {
       nick,
       expiresAt,
@@ -123,7 +126,7 @@ export async function POST(req: Request) {
 
     if (uniqueId) {
       try {
-        profile = await getHabboUserByIdForHotel(uniqueId, hotel)
+        profile = await getHabboUserByIdForHotel(uniqueId, hotel, { cache: false })
       } catch (err: any) {
         const message = err?.message || ''
         if (/404/.test(message)) {
@@ -136,7 +139,7 @@ export async function POST(req: Request) {
 
     if (!profile) {
       logger.info('[verify/status] fetching profile by name', { nick, nickname, hotel })
-      profile = await getHabboUserByNameForHotel(nickname, hotel)
+      profile = await getHabboUserByNameForHotel(nickname, hotel, { cache: false })
       uniqueId = profile?.uniqueId || uniqueId
       if (uniqueId) {
         logger.info('[verify/status] resolved uniqueId from name', { nick, uniqueId })

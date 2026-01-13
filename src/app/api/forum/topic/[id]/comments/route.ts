@@ -1,20 +1,15 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/auth'
-import sanitizeHtml from 'sanitize-html'
+import { sanitizeCommentBody } from '@/server/comment-sanitize'
 import { z } from 'zod'
-import { createForumComment } from '@/server/directus-service'
+import { createForumComment } from '@/server/directus/forum'
 import { checkRateLimit } from '@/server/rate-limit'
 import { buildError, formatZodError } from '@/types/api'
 
 const BodySchema = z.object({
   content: z.string().trim().min(1, 'Commentaire requis').max(5000, 'Commentaire trop long'),
 })
-
-function extractPlainText(html: string) {
-  const stripped = html.replace(/<[^>]+>/g, ' ').replace(/&nbsp;/gi, ' ')
-  return stripped.replace(/\s+/g, ' ').trim()
-}
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
   const { id } = await ctx.params
@@ -47,13 +42,7 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   }
 
   const htmlContent = parsed.data.content
-  const sanitizedHtml = sanitizeHtml(htmlContent, {
-    allowedTags: ['p','br','strong','em','ul','ol','li','a','span'],
-    allowedAttributes: { a: ['href','title','rel'], span: ['class'] },
-    allowedSchemes: ['http','https','mailto'],
-    transformTags: { a: sanitizeHtml.simpleTransform('a', { rel: 'nofollow noopener noreferrer' }) },
-  })
-  const plain = extractPlainText(sanitizedHtml)
+  const { sanitizedHtml, plain } = sanitizeCommentBody(htmlContent)
   if (!plain) {
     return NextResponse.json(buildError('Commentaire vide', { code: 'EMPTY_COMMENT' }), { status: 400 })
   }

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { listNewsByAuthorService } from '@/server/directus-service';
+import { listNewsByAuthorService } from '@/server/directus/news';
 import { buildError } from '@/types/api';
 
 export async function GET(req: Request) {

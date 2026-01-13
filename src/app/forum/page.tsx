@@ -3,8 +3,10 @@ import { JSX } from 'react'
 import {
   listForumCategoriesService,
   listForumTopicsWithCategories,
-} from '@/server/directus-service'
-import { mediaUrl } from '@/lib/directus'
+} from '@/server/directus/forum'
+import { mediaUrl } from '@/lib/directus/media'
+import { formatDateShortFr, parseTimestamp } from '@/lib/date-utils'
+import { stripHtml } from '@/lib/text-utils'
 
 export const revalidate = 60
 
@@ -63,30 +65,7 @@ function isActiveTopic(topic: ForumTopic): boolean {
 }
 
 function toTimestamp(value: unknown): number {
-  if (typeof value === 'number') return Number.isFinite(value) ? value : 0
-  if (value instanceof Date) return value.getTime()
-  const raw = toStringSafe(value)
-  if (!raw) return 0
-  const parsed = Date.parse(raw)
-  return Number.isNaN(parsed) ? 0 : parsed
-}
-
-function formatDate(value: unknown): string | null {
-  const timestamp = toTimestamp(value)
-  if (!timestamp) return null
-  try {
-    return new Date(timestamp).toLocaleDateString('fr-FR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    })
-  } catch {
-    return null
-  }
-}
-
-function stripHtml(input: string): string {
-  return input.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
+  return parseTimestamp(value, { numeric: 'ms', numericString: 'parse' })
 }
 
 function buildExcerpt(html?: string | null): string {
@@ -195,7 +174,7 @@ export default async function ForumPage({ searchParams }: ForumPageProps) {
     const topicId = toStringSafe(topic?.id) || '0'
     const title = toStringSafe(topic?.titulo) || (topicId ? `Sujet #${topicId}` : 'Sujet')
     const author = toStringSafe(topic?.autor)
-    const publishedAt = formatDate(topic?.data)
+    const publishedAt = formatDateShortFr(topic?.data)
     const excerpt = buildExcerpt(topic?.conteudo)
     const bodyPreview = excerpt ? excerpt.slice(0, 140) : ''
     const previewText = bodyPreview

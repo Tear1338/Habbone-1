@@ -1,26 +1,21 @@
 import Image from 'next/image';
 import Link from 'next/link';
 import { Newspaper, Search } from 'lucide-react';
-import { getNews, mediaUrl } from '@/lib/directus';
+import { mediaUrl } from '@/lib/directus/media';
+import { getNews } from '@/lib/directus/news';
+import { stripHtml } from '@/lib/text-utils';
+import { formatDateTimeFromString } from '@/lib/date-utils';
 
 export const revalidate = 60;
 
-function fmtDate(v?: string) {
-  if (!v) return '';
-  const d = new Date(v);
-  return Number.isNaN(+d) ? '' : d.toLocaleString();
-}
-
-function stripHtml(input: string) {
-  return input ? input.replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim() : '';
-}
+const NEWS_FALLBACK_ICON = '/img/news.png';
 
 function buildExcerpt(record: any) {
   const source = record?.descricao || record?.noticia || '';
   const plain = stripHtml(source);
   if (!plain) return '';
-  if (plain.length <= 220) return plain;
-  return `${plain.slice(0, 220).trimEnd()}...`;
+  if (plain.length <= 160) return plain;
+  return `${plain.slice(0, 160).trimEnd()}...`;
 }
 
 type NewsPageProps = {
@@ -75,72 +70,64 @@ export default async function NewsPage({ searchParams }: NewsPageProps) {
         ) : (
           news.map((article: any) => {
             const imageUrl = mediaUrl(article?.imagem);
+            const cardImage = imageUrl || NEWS_FALLBACK_ICON;
+            const title = stripHtml(article?.titulo || `Article #${article.id}`) || `Article #${article.id}`;
             const excerpt = buildExcerpt(article);
-            const showFade = excerpt.length > 160;
+            const bodyPreview = excerpt ? excerpt.slice(0, 140) : '';
+            const previewText = bodyPreview
+              ? bodyPreview + (excerpt.length > bodyPreview.length ? '.' : '')
+              : '';
             const authorLabel = stripHtml(article?.autor || '');
             const statusLabel = stripHtml(article?.status || '');
+            const publishedAt = formatDateTimeFromString(article?.data);
+
             return (
               <article
                 key={article.id}
-                className="grid gap-4 rounded-sm border border-[color:var(--bg-700)]/55 bg-[color:var(--bg-900)]/45 p-5 shadow-[0_24px_65px_-55px_rgba(0,0,0,0.9)] sm:grid-cols-[minmax(0,170px)_1fr] sm:p-6"
+                className="rounded-[2px] border border-[color:var(--bg-700)]/45 bg-[color:var(--bg-900)]/50 px-4 py-5 shadow-[0_18px_55px_-58px_rgba(0,0,0,0.82)] sm:flex sm:items-center sm:justify-between sm:gap-6"
               >
-                <div className="relative h-48 overflow-hidden rounded-sm border border-[color:var(--bg-700)]/60 bg-[color:var(--bg-800)]/60 sm:h-44">
-                  {imageUrl ? (
+                <div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:gap-5 sm:max-w-[70%]">
+                  <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden border border-[color:var(--bg-700)]/45 bg-[color:var(--bg-800)]/55 p-2">
                     <Image
-                      src={imageUrl}
-                      alt={stripHtml(article?.titulo || `Article ${article.id}`)}
+                      src={cardImage}
+                      alt={title}
                       fill
-                      sizes="(max-width: 640px) 100vw, 200px"
-                      className="object-cover"
+                      sizes="64px"
+                      className={imageUrl ? "object-cover" : "object-contain"}
                       priority={false}
                     />
-                  ) : (
-                    <div className="flex h-full items-center justify-center text-xs font-semibold uppercase tracking-[0.3em] text-[color:var(--foreground)]/40">
-                      Aucun visuel
+                  </div>
+                  <div className="flex flex-col gap-3">
+                    <Link
+                      href={`/news/${article.id}`}
+                      className="block text-sm font-semibold uppercase tracking-[0.08em] text-[color:var(--foreground)] hover:text-[color:var(--foreground)]/80"
+                    >
+                      {title}
+                    </Link>
+                    {previewText ? (
+                      <p className="text-sm leading-relaxed text-[color:var(--foreground)]/65">{previewText}</p>
+                    ) : null}
+                    <div className="flex flex-wrap items-center gap-2 text-[0.68rem] font-medium uppercase tracking-[0.07em] text-[color:var(--foreground)]/55">
+                      {authorLabel ? <span>Par {authorLabel}</span> : null}
+                      {authorLabel && publishedAt ? (
+                        <span className="mx-1 h-px w-3 bg-[color:var(--foreground)]/20" />
+                      ) : null}
+                      {publishedAt ? <span>Publie le {publishedAt}</span> : null}
+                      {statusLabel ? (
+                        <span className="rounded-[2px] bg-[color:var(--bg-700)]/65 px-2 py-0.5 text-[color:var(--foreground)]/70">
+                          {statusLabel}
+                        </span>
+                      ) : null}
                     </div>
-                  )}
+                  </div>
                 </div>
-                <div className="flex flex-col gap-4">
-                  <div className="space-y-2">
-                    <Link
-                      href={`/news/${article.id}`}
-                      className="text-base font-semibold uppercase tracking-[0.18em] text-[color:var(--foreground)] hover:text-[color:var(--foreground)]/80"
-                    >
-                      {stripHtml(article?.titulo || `Article #${article.id}`)}
-                    </Link>
-                    {excerpt ? (
-                      <div
-                        className="relative overflow-hidden rounded-sm border border-[color:var(--bg-700)]/50 bg-[color:var(--bg-800)]/50 p-3"
-                        style={{ maxHeight: '5.5rem' }}
-                      >
-                        <p className="text-sm leading-relaxed text-[color:var(--foreground)]/75">{excerpt}</p>
-                        {showFade ? (
-                          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-[color:var(--bg-800)] via-[color:var(--bg-800)]/70 to-transparent" />
-                        ) : null}
-                      </div>
-                    ) : null}
-                  </div>
-                  <div className="mt-auto flex flex-wrap items-center gap-3 text-xs font-semibold uppercase tracking-[0.22em] text-[color:var(--foreground)]/65">
-                    <Link
-                      href={`/news/${article.id}`}
-                      className="inline-flex items-center justify-center rounded-sm bg-[#1d4bff] px-4 py-2 text-[0.65rem] font-semibold uppercase tracking-[0.22em] text-white transition hover:bg-[#335bff]"
-                    >
-                      Voir plus
-                    </Link>
-                    {authorLabel ? (
-                      <span className="rounded-full border border-[color:var(--bg-600)]/60 bg-[color:var(--bg-800)]/55 px-3 py-1 text-[0.6rem] uppercase tracking-[0.22em] text-[color:var(--foreground)]/80">
-                        {authorLabel}
-                      </span>
-                    ) : null}
-                    {statusLabel ? (
-                      <span className="rounded-full border border-[color:var(--bg-600)]/60 bg-[color:var(--bg-800)]/55 px-3 py-1 text-[0.6rem] uppercase tracking-[0.22em] text-[color:var(--foreground)]/65">
-                        {statusLabel}
-                      </span>
-                    ) : null}
-                    <span className="ml-auto text-[0.6rem] uppercase tracking-[0.3em] text-[color:var(--foreground)]/45">
-                      {fmtDate(article?.data)}
-                    </span>
-                  </div>
+                <div className="mt-4 flex w-full justify-end gap-3 text-[0.7rem] font-semibold uppercase text-[color:var(--foreground)]/70 sm:mt-0 sm:w-auto sm:self-center">
+                  <Link
+                    href={`/news/${article.id}`}
+                    className="mr-10 rounded-[2px] bg-[#4c7dff] px-[1.35rem] py-[0.45rem] text-white transition hover:bg-[#6a95ff]"
+                  >
+                    Voir plus
+                  </Link>
                 </div>
               </article>
             );

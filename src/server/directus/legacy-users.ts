@@ -1,0 +1,125 @@
+import 'server-only';
+
+import {
+  directusService,
+  directusUrl,
+  serviceToken,
+  USERS_TABLE,
+  rItems,
+  uItem,
+  dItem,
+} from './client';
+import type { LegacyUserLite } from './types';
+
+type CollectionResponse<T> = {
+  data?: T[];
+  meta?: { total_count?: number };
+};
+
+export async function getLegacyUserByEmail(email?: string | null) {
+  const e = (email || '').trim();
+  if (!e) return null;
+  const rows = await directusService
+    .request(
+      rItems(USERS_TABLE as any, {
+        filter: { email: { _eq: e } } as any,
+        fields: ['id', 'email', 'banido', 'ativado'] as any,
+        limit: 1 as any,
+      } as any),
+    )
+    .catch(() => []);
+  return Array.isArray(rows) && rows.length > 0 ? rows[0] : null;
+}
+
+export async function searchLegacyUsuarios(
+  q?: string,
+  limit = 20,
+  page = 1,
+  filters?: { roleName?: string | null; status?: string | null },
+): Promise<{ items: LegacyUserLite[]; total: number }> {
+  const applyFilters = (params: URLSearchParams) => {
+    if (q) params.set('search', q);
+    if (filters?.roleName) params.set('filter[role][_eq]', String(filters.roleName));
+    if (filters?.status) params.set('filter[status][_eq]', String(filters.status));
+  };
+
+  const fetchTotalCount = async (): Promise<number | null> => {
+    const totalUrl = new URL(`${directusUrl}/items/${encodeURIComponent(USERS_TABLE)}`);
+    applyFilters(totalUrl.searchParams);
+    totalUrl.searchParams.set('limit', '0');
+    totalUrl.searchParams.set('meta', 'total_count');
+    try {
+      const response = await fetch(totalUrl.toString(), {
+        headers: { Authorization: `Bearer ${serviceToken}` },
+        cache: 'no-store',
+      });
+      if (!response.ok) return null;
+      const payload = (await response.json()) as CollectionResponse<LegacyUserLite>;
+      return typeof payload?.meta?.total_count === 'number' ? payload.meta.total_count : null;
+    } catch {
+      return null;
+    }
+  };
+
+  try {
+    const params: Record<string, unknown> = {
+      limit,
+      page,
+      fields: ['id', 'email', 'nick', 'status', 'role', 'banido', 'ativado'],
+    };
+    if (q) params.search = q;
+    const filter: Record<string, unknown> = {};
+    if (filters?.roleName) filter.role = { _eq: filters.roleName };
+    if (filters?.status) filter.status = { _eq: filters.status };
+    if (Object.keys(filter).length > 0) {
+      params.filter = filter as any;
+    }
+    const items = (await directusService
+      .request(rItems(USERS_TABLE as any, params as any))
+      .catch(() => [])) as LegacyUserLite[];
+
+    if (Array.isArray(items) && items.length > 0) {
+      const total = await fetchTotalCount();
+      return { items, total: total ?? items.length };
+    }
+  } catch {}
+
+  try {
+    const url = new URL(`${directusUrl}/items/${encodeURIComponent(USERS_TABLE)}`);
+    url.searchParams.set('limit', String(limit));
+    url.searchParams.set('page', String(page));
+    url.searchParams.set('fields', 'id,email,nick,status,role,banido,ativado');
+    applyFilters(url.searchParams);
+    const response = await fetch(url.toString(), {
+      headers: { Authorization: `Bearer ${serviceToken}`, Accept: 'application/json' },
+      cache: 'no-store',
+    });
+    if (!response.ok) throw new Error(`LEGACY_USERS_FETCH_FAILED:${response.status}`);
+    const payload = (await response.json()) as CollectionResponse<LegacyUserLite>;
+    const items = Array.isArray(payload?.data) ? payload.data : [];
+    const total = await fetchTotalCount();
+    return { items, total: total ?? items.length };
+  } catch {}
+
+  return { items: [], total: 0 };
+}
+
+export async function setLegacyUserRole(userId: number | string, roleName: string) {
+  const payload: Partial<LegacyUserLite> = { role: roleName };
+  return directusService.request(uItem(USERS_TABLE as any, String(userId), payload as any));
+}
+
+export async function setLegacyUserBanStatus(userId: number | string, banned: boolean) {
+  const payload: Partial<LegacyUserLite> & { status: string } = {
+    banido: banned ? 's' : 'n',
+    ativado: banned ? 'n' : 's',
+    status: banned ? 'suspended' : 'active',
+  };
+  return directusService.request(uItem(USERS_TABLE as any, String(userId), payload as any));
+}
+
+export async function deleteLegacyUser(userId: number | string) {
+  return directusService.request(dItem(USERS_TABLE as any, String(userId)));
+}
+
+export type { LegacyUserLite };

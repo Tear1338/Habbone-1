@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { VerificationRegenerateSchema, formatZodError, buildError } from '@/types/api'
-import { getUserByNick, listUsersByNick, normalizeHotelCode, updateUserVerification } from '@/server/directus-service'
+import { getUserByNick, listUsersByNick, normalizeHotelCode, updateUserVerification } from '@/server/directus/users'
 import { computeVerificationExpiry, generateVerificationCode } from '@/lib/verification'
+import { parseTimestamp } from '@/lib/date-utils'
 import * as logger from '@/server/logger'
 import { checkRateLimit } from '@/server/rate-limit'
 
@@ -66,10 +67,11 @@ export async function POST(req: Request) {
 
     const code = generateVerificationCode()
     const expiresAt = computeVerificationExpiry()
+    const expiresAtMs = parseTimestamp(expiresAt, { numeric: 'ms', numericString: 'parse' })
     logger.info('[verify/regenerate] code reissued', {
       nick,
       expiresAt,
-      deltaMs: Date.parse(expiresAt) - Date.now(),
+      deltaMs: expiresAtMs ? expiresAtMs - Date.now() : null,
       nowIso: new Date().toISOString(),
       code,
     })

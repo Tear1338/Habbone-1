@@ -10,6 +10,7 @@ import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle }
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
+import { formatDateTimeFromString } from "@/lib/date-utils";
 
 type Fn = (formData: FormData) => Promise<void>;
 
@@ -181,7 +182,7 @@ export default function AdminLists(props: {
                       <CardTitle className="text-base font-semibold">{t.titulo || "(sans titre)"}</CardTitle>
                       <div className="flex items-center gap-2">
                         <CardDescription className="text-xs">
-                          Sujet #{t.id} · {t.autor || "-"} · {formatDate(t.data)} · vues : {t.views ?? 0}
+                          Sujet #{t.id} · {t.autor || "-"} · {formatDateTimeFromString(t.data)} · vues : {t.views ?? 0}
                         </CardDescription>
                         {t?.status ? <Badge variant="secondary">{String(t.status)}</Badge> : null}
                       </div>
@@ -265,7 +266,7 @@ export default function AdminLists(props: {
                       </CardTitle>
                       <div className="flex items-center gap-2">
                         <CardDescription className="text-xs">
-                          Message #{p.id} · {p.autor || "-"} · {formatDate(p.data)}
+                          Message #{p.id} · {p.autor || "-"} · {formatDateTimeFromString(p.data)}
                         </CardDescription>
                         {p?.status ? <Badge variant="secondary">{String(p.status)}</Badge> : null}
                       </div>
@@ -339,7 +340,7 @@ export default function AdminLists(props: {
                       <CardTitle className="text-base font-semibold">{n.titulo || "(sans titre)"}</CardTitle>
                       <div className="flex items-center gap-2">
                         <CardDescription className="text-xs">
-                          Article #{n.id} · {n.autor || "-"} · {formatDate(n.data)}
+                          Article #{n.id} · {n.autor || "-"} · {formatDateTimeFromString(n.data)}
                         </CardDescription>
                         {n?.status ? <Badge variant="secondary">{String(n.status)}</Badge> : null}
                       </div>
@@ -420,7 +421,7 @@ export default function AdminLists(props: {
                     <CardHeader className="pb-3 pt-3">
                       <CardTitle className="text-base font-semibold">Commentaire #{c.id}</CardTitle>
                       <CardDescription className="text-xs">
-                        Article #{c.id_noticia} · {c.autor || "-"} · {formatDate(c.data)}
+                        Article #{c.id_noticia} · {c.autor || "-"} · {formatDateTimeFromString(c.data)}
                       </CardDescription>
                     </CardHeader>
                     <CardFooter className="gap-2 pt-3">
@@ -483,7 +484,7 @@ export default function AdminLists(props: {
                     <CardHeader className="pb-3 pt-3">
                       <CardTitle className="text-base font-semibold">Commentaire #{c.id}</CardTitle>
                       <CardDescription className="text-xs">
-                        Sujet #{c.id_forum} · {c.autor || "-"} · {formatDate(c.data)}
+                        Sujet #{c.id_forum} · {c.autor || "-"} · {formatDateTimeFromString(c.data)}
                       </CardDescription>
                     </CardHeader>
                     <CardFooter className="gap-2 pt-3">
@@ -604,8 +605,3 @@ function DeleteDialog({ label, onSubmit, id }: { label: string; onSubmit?: Fn; i
   );
 }
 
-function formatDate(v?: string) {
-  if (!v) return "";
-  const d = new Date(v);
-  return Number.isNaN(+d) ? "" : d.toLocaleString();
-}

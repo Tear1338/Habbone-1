@@ -11,6 +11,7 @@ import {
   getHabboAchievementsById,
   getAllAchievements,
 } from '@/server/habbo-cache';
+import { buildHabboProfilePayload, resolveHabboProfileSettled } from '@/server/habbo-profile';
 import { HabboProfileQuerySchema, searchParamsToObject, formatZodError, buildError } from '@/types/api';
 
 export async function GET(req: Request) {
@@ -45,16 +46,12 @@ export async function GET(req: Request) {
         ]);
         const profile = onlyProfile[0].status === 'fulfilled' ? onlyProfile[0].value : null;
         return NextResponse.json(
-          {
-            user: core,
+          buildHabboProfilePayload({
+            core,
             profile,
-            friends: [],
-            groups: [],
-            rooms: [],
-            badges: [],
             uniqueId,
-            achievements: [],
-          },
+            lite: true,
+          }),
           { headers: { 'Cache-Control': 'no-store' } }
         );
       }
@@ -70,46 +67,37 @@ export async function GET(req: Request) {
         getAllAchievements(),
       ]);
 
-    const profile = profileRes.status === 'fulfilled' ? profileRes.value : null;
-    const friends = friendsRes.status === 'fulfilled' ? friendsRes.value : [];
-    const groups = groupsRes.status === 'fulfilled' ? groupsRes.value : [];
-    const rooms = roomsRes.status === 'fulfilled' ? roomsRes.value : [];
-    const badgesRaw = badgesRes.status === 'fulfilled' ? badgesRes.value : [];
-    const achievements = achievementsRes.status === 'fulfilled' ? achievementsRes.value : [];
-    const achievementsTotal = achievementsCatalogRes.status === 'fulfilled' ? achievementsCatalogRes.value : [];
-
-    // ---- Enrich badges with reliable album/image hints using achievements catalog ----
-    const achCodeSet = new Set<string>();
-    try {
-      const arr: any[] = Array.isArray(achievementsTotal) ? (achievementsTotal as any[]) : [];
-      for (const row of arr) {
-        const c = (row?.code || row?.badgeCode || row?.badge_code || row?.badge?.code || '').toString().trim().toUpperCase();
-        if (c) achCodeSet.add(c);
-      }
-    } catch {}
-    const badges = (Array.isArray(badgesRaw) ? badgesRaw : []).map((b: any) => {
-      const rawCode = (b?.code || b?.badgeCode || b?.badge_code || b?.badge?.code || '').toString().trim();
-      const up = rawCode.toUpperCase();
-      let album = (b?.album || b?.badgeAlbum || b?.category || b?.badgeCategory || null) as string | null;
-      if (!album && up && (up.startsWith('ACH_') || achCodeSet.has(up))) {
-        album = 'album1584';
-      }
-      return { ...b, code: rawCode, album };
+    const {
+      profile,
+      friends,
+      groups,
+      rooms,
+      badgesRaw,
+      achievements,
+      achievementsTotal,
+    } = resolveHabboProfileSettled({
+      profileRes,
+      friendsRes,
+      groupsRes,
+      roomsRes,
+      badgesRes,
+      achievementsRes,
+      achievementsCatalogRes,
     });
 
+    // ---- Enrich badges with reliable album/image hints using achievements catalog ----
     return NextResponse.json(
-      {
-        user: core,
+      buildHabboProfilePayload({
+        core,
         profile,
         friends,
         groups,
         rooms,
-        badges,
-        uniqueId,
+        badgesRaw,
         achievements,
-        achievementsCount: Array.isArray(achievements) ? achievements.length : 0,
-        achievementsTotalCount: Array.isArray(achievementsTotal) ? achievementsTotal.length : 0,
-      },
+        achievementsTotal,
+        uniqueId,
+      }),
       {
         headers: {
           'Cache-Control': 'no-store',

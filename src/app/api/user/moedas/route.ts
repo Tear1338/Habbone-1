@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/auth'
-import { getUserMoedas } from '@/server/directus-service'
+import { getUserMoedas } from '@/server/directus/users'
 import { buildError } from '@/types/api'
 
 export async function GET() {
@@ -16,4 +16,3 @@ export async function GET() {
     return NextResponse.json(buildError('Erreur serveur', { code: 'SERVER_ERROR' }), { status: 500 })
   }
 }
-

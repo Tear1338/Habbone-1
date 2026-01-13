@@ -12,38 +12,21 @@ import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip
 import { Skeleton } from "@/components/ui/skeleton";
 import { BadgeIcon } from "./modules/BadgeIcon";
 import Link from "next/link";
-import { mediaUrl } from "@/lib/directus";
-import type { HabboUserCore, HabboFriend, HabboGroup, HabboRoom, HabboBadge, HabboAchievement } from "@/lib/habbo";
+import { mediaUrl } from "@/lib/directus/media";
+import { buildHabboAvatarUrl } from "@/lib/habbo-imaging";
+import { useHabboProfile } from "@/lib/use-habbo-profile";
+import { formatDateTimeFlexible, formatDateTimeNative } from "@/lib/date-utils";
+import type { HabboFriend, HabboGroup, HabboRoom, HabboBadge, HabboAchievement } from "@/lib/habbo";
+import type { HabboProfileResponse } from "@/types/habbo";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import "./profile.tailwind.css";
 
-type HabboProfileResponse = {
-  user: HabboUserCore;
-  profile: unknown | null;
-  friends: HabboFriend[];
-  groups: HabboGroup[];
-  rooms: HabboRoom[];
-  badges: HabboBadge[];
-  uniqueId: string;
-  achievements?: HabboAchievement[];
-  achievementsCount?: number;
-  achievementsTotalCount?: number;
-};
-
-declare global {
-  interface Window {
-    __habboProfile?: HabboProfileResponse;
-    __habboLevel?: number | null;
-  }
-}
-
 const PAGE_SIZE = 100;
-const HABBO_BASE = process.env.NEXT_PUBLIC_HABBO_BASE || "https://www.habbo.fr";
 
 export default function ProfileClient({ nick }: { nick: string }) {
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [data, setData] = useState<HabboProfileResponse | null>(null);
+  const { data, error, loading, refresh } = useHabboProfile(nick, {
+    fallbackMessage: "Erreur de récupération du profil",
+  });
 
   const [friendsPage, setFriendsPage] = useState(1);
   const [groupsPage, setGroupsPage] = useState(1);
@@ -56,39 +39,6 @@ export default function ProfileClient({ nick }: { nick: string }) {
   const [articlesDir, setArticlesDir] = useState<1 | -1>(1);
   const reduce = useReducedMotion();
 
-  useEffect(() => {
-    let mounted = true;
-    setLoading(true);
-    setError(null);
-    setData(null);
-
-    const fetchData = async () => {
-      try {
-        const res = await fetch(`/api/habbo/profile?name=${encodeURIComponent(nick)}`, {
-          cache: "no-store",
-        });
-        const json = (await res.json()) as unknown;
-        if (!res.ok) {
-          const maybeErr = (json as { error?: unknown })?.error;
-          const msg = typeof maybeErr === "string" ? maybeErr : "Erreur de récupération du profil";
-          throw new Error(msg);
-        }
-        if (mounted) setData(json as HabboProfileResponse);
-      } catch (e: unknown) {
-        const msg = e && typeof e === "object" && "message" in e ? String((e as any).message) : "Erreur";
-        if (mounted) setError(msg);
-      } finally {
-        if (mounted) setLoading(false);
-      }
-    };
-
-    fetchData();
-
-    return () => {
-      mounted = false;
-    };
-  }, [nick]);
-
   // Broadcast profile data to the header (mutualize on /profile)
   useEffect(() => {
     if (typeof window === "undefined" || !data) return;
@@ -96,7 +46,7 @@ export default function ProfileClient({ nick }: { nick: string }) {
       window.__habboProfile = data;
       const lvl = typeof data.user?.currentLevel === "number" ? data.user.currentLevel : null;
       window.__habboLevel = lvl;
-      window.dispatchEvent(new CustomEvent("habbo:profile", { detail: data }));
+      window.dispatchEvent(new CustomEvent<HabboProfileResponse>("habbo:profile", { detail: data }));
     } catch {}
   }, [data]);
 
@@ -197,25 +147,25 @@ export default function ProfileClient({ nick }: { nick: string }) {
     return isNaN(+d) ? v : d.toLocaleDateString();
   }
 
-  // Flexible date formatter for Directus values (ISO, ms, or seconds)
-  function fmtDateFlexible(v?: unknown): string {
-    if (v == null || v === "") return "";
-    if (typeof v === "number") {
-      const ms = v > 1e12 ? v : v * 1000; // seconds -> ms
-      return new Date(ms).toLocaleString();
-    }
-    const n = Number(v);
-    if (!Number.isNaN(n) && n > 0) {
-      const ms = n > 1e12 ? n : n * 1000;
-      return new Date(ms).toLocaleString();
-    }
-    const t = Date.parse(String(v));
-    return Number.isNaN(t) ? "" : new Date(t).toLocaleString();
+  function resolveProfileCurrentLevel(profile: HabboProfileResponse["profile"]): number | undefined {
+    if (!profile || typeof profile !== "object") return undefined;
+    const record = profile as Record<string, unknown>;
+    const direct = record.currentLevel;
+    if (typeof direct === "number") return direct;
+    const user = record.user;
+    if (!user || typeof user !== "object") return undefined;
+    const userRecord = user as Record<string, unknown>;
+    const nested = userRecord.currentLevel;
+    return typeof nested === "number" ? nested : undefined;
   }
 
-  const headerAvatarUrl = `${HABBO_BASE}/habbo-imaging/avatarimage?user=${encodeURIComponent(
-    data?.user?.name || nick || ""
-  )}&direction=2&head_direction=3&img_format=png&size=l`;
+  const headerUser = data?.user;
+  const headerAvatarUrl = buildHabboAvatarUrl(headerUser?.name || nick || "", {
+    direction: 2,
+    head_direction: 3,
+    img_format: "png",
+    size: "l",
+  });
 
   return (
     <div className="profile-page">
@@ -241,12 +191,12 @@ export default function ProfileClient({ nick }: { nick: string }) {
         {/* Header */}
         {data && (
           <ProfileHeaderCard
-            nick={(data as any)?.user?.name || nick}
-            memberSince={fmtMemberSince((data as any)?.user?.memberSince)}
-            level={(data as any)?.user?.currentLevel ?? (data as any)?.profile?.currentLevel}
-            starGems={(data as any)?.user?.starGemCount}
+            nick={headerUser?.name || nick}
+            memberSince={fmtMemberSince(headerUser?.memberSince)}
+            level={headerUser?.currentLevel ?? resolveProfileCurrentLevel(data.profile)}
+            starGems={headerUser?.starGemCount}
             avatarUrl={headerAvatarUrl}
-            motto={(data as any)?.user?.motto}
+            motto={headerUser?.motto}
             ariaBusy={loading}
           />
         )}
@@ -316,7 +266,7 @@ export default function ProfileClient({ nick }: { nick: string }) {
                                   {a.titulo ?? `Article #${a.id}`}
                                 </Link>
                                 <div className="text-xs opacity-70 mt-1 truncate">
-                                  Par {a.autor ?? '—'} · {fmtDateFlexible(a.data)}
+                                  Par {a.autor ?? '—'} · {formatDateTimeFlexible(a.data)}
                                 </div>
                               </div>
                             </div>
@@ -353,9 +303,13 @@ export default function ProfileClient({ nick }: { nick: string }) {
                           <div className="relative w-16 h-16 rounded-full bg-[color:var(--bg-800)] flex items-center justify-center overflow-hidden ring-1 ring-[color:var(--border)]">
                             {/* eslint-disable-next-line @next/next/no-img-element */}
                             <img
-                              src={`${HABBO_BASE}/habbo-imaging/avatarimage?user=${encodeURIComponent(
-                                f?.name || f?.habbo || ""
-                              )}&direction=2&head_direction=3&img_format=png&headonly=1&size=s`}
+                              src={buildHabboAvatarUrl(f?.name || f?.habbo || "", {
+                                direction: 2,
+                                head_direction: 3,
+                                img_format: "png",
+                                headonly: 1,
+                                size: "s",
+                              })}
                               alt={`Avatar de ${f?.name || "inconnu"}`}
                               loading="lazy"
                               className="w-14 h-14 rounded"
@@ -488,7 +442,7 @@ export default function ProfileClient({ nick }: { nick: string }) {
                       {r?.description && <div className="text-xs opacity-70">{r.description}</div>}
                       {r?.creationTime && (
                         <div className="text-xs opacity-60 mt-1">
-                          {new Date(r.creationTime).toLocaleString?.() || String(r.creationTime)}
+                          {formatDateTimeNative(r.creationTime)}
                         </div>
                       )}
                     </li>
@@ -528,22 +482,10 @@ export default function ProfileClient({ nick }: { nick: string }) {
                 setGroupsPage(1);
                 setBadgesPage(1);
                 setRoomsPage(1);
-                setLoading(true);
                 setTimeout(() => {
                   // trigger effect by changing nick dependency pattern if needed
                   // here just re-run current fetch
-                  fetch(`/api/habbo/profile?name=${encodeURIComponent(nick)}`, { cache: "no-store" })
-                    .then(async (r) => {
-                      const body = (await r.json().catch(() => null)) as unknown;
-                      if (!r.ok) {
-                        const maybeErr = (body as { error?: unknown } | null)?.error;
-                        const msg = typeof maybeErr === 'string' ? maybeErr : 'Erreur de récupération du profil';
-                        throw new Error(msg);
-                      }
-                      setData(body as HabboProfileResponse);
-                    })
-                    .catch((e: unknown) => setError(e && typeof e === 'object' && 'message' in e ? String((e as any).message) : 'Erreur'))
-                    .finally(() => setLoading(false));
+                  void refresh();
                 }, 0);
               }}
             />

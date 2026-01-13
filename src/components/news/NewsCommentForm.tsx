@@ -5,10 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import RichEditor from "@/components/editor/RichEditor";
 import { Button } from "@/components/ui/button";
-
-function stripHtml(input: string) {
-  return input ? input.replace(/<[^>]+>/g, " ").replace(/&nbsp;/gi, " ").replace(/\s+/g, " ").trim() : "";
-}
+import { stripHtml } from "@/lib/text-utils";
 
 export default function NewsCommentForm({ newsId }: { newsId: number }) {
   const router = useRouter();
@@ -19,7 +16,7 @@ export default function NewsCommentForm({ newsId }: { newsId: number }) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     const html = String(formData.get("comentario") || "");
-    const plain = stripHtml(html);
+    const plain = stripHtml(html, { replaceNbsp: true });
     if (!plain) {
       toast.error("Commentaire vide");
       return;
@@ -49,6 +46,7 @@ export default function NewsCommentForm({ newsId }: { newsId: number }) {
   return (
     <form
       onSubmit={handleSubmit}
+      id="post-comment"
       className="space-y-4 rounded-md border border-[color:var(--bg-600)]/55 bg-[color:var(--bg-800)]/45 p-5 shadow-[0_18px_55px_-45px_rgba(0,0,0,0.6)]"
     >
       <div className="text-sm font-semibold text-[color:var(--foreground)]/85">

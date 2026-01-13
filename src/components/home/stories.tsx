@@ -1,31 +1,12 @@
-import { mediaUrl } from '@/lib/directus'
+import { mediaUrl } from '@/lib/directus/media'
+import { parseTimestamp } from '@/lib/date-utils'
 
-import { listStoriesService } from '@/server/directus-service'
+import { listStoriesService } from '@/server/directus/stories'
 import StoriesClient from './stories-client'
 
 function toTimestamp(value: unknown): number {
   if (value == null || value === '') return 0
-  if (value instanceof Date) return value.getTime()
-  if (typeof value === 'number' && Number.isFinite(value)) {
-    return value > 1e12 ? value : value * 1000
-  }
-  if (typeof value === 'string') {
-    const trimmed = value.trim()
-    if (!trimmed) return 0
-    const numeric = Number(trimmed)
-    if (!Number.isNaN(numeric)) {
-      return numeric > 1e12 ? numeric : numeric * 1000
-    }
-    let parsed = Date.parse(trimmed)
-    if (Number.isNaN(parsed)) {
-      const mysqlLike = trimmed.match(/^(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2}:\d{2})$/)
-      if (mysqlLike) {
-        parsed = Date.parse(`${mysqlLike[1]}T${mysqlLike[2]}Z`)
-      }
-    }
-    return Number.isNaN(parsed) ? 0 : parsed
-  }
-  return 0
+  return parseTimestamp(value, { numeric: 'auto', numericString: 'number', mysqlLike: true })
 }
 
 function resolveStoryTimestamp(row: Record<string, any>): number {

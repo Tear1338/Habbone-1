@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react"
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion"
-import { mediaUrl } from "@/lib/directus"
+import { mediaUrl } from "@/lib/directus/media"
 
 type Item = { id: number; titulo: string; descricao?: string | null; imagem?: string | null }
 

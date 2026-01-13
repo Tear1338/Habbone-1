@@ -1,6 +1,7 @@
 "use client"
 import React, { useState } from "react"
 import { toast } from "sonner"
+import { buildHabboAvatarUrl } from "@/lib/habbo-imaging"
 
 type CommentBubbleProps = {
   id?: number
@@ -10,16 +11,31 @@ type CommentBubbleProps = {
   likes?: number
   avatarNick?: string
   canInteract?: boolean
+  showActions?: boolean
 }
-
-const HABBO_BASE = process.env.NEXT_PUBLIC_HABBO_BASE || "https://www.habbo.fr"
 
 function habboHeadUrl(nick?: string) {
-  const safe = encodeURIComponent(String(nick || "").trim())
-  return `${HABBO_BASE}/habbo-imaging/avatarimage?user=${safe}&direction=2&head_direction=3&img_format=png&gesture=sml&headonly=1&size=m`
+  const safe = String(nick || "").trim()
+  return buildHabboAvatarUrl(safe, {
+    direction: 2,
+    head_direction: 3,
+    img_format: "png",
+    gesture: "sml",
+    headonly: 1,
+    size: "m",
+  })
 }
 
-export default function CommentBubble({ id, author, date, html, likes = 0, avatarNick, canInteract = false }: CommentBubbleProps) {
+export default function CommentBubble({
+  id,
+  author,
+  date,
+  html,
+  likes = 0,
+  avatarNick,
+  canInteract = false,
+  showActions = true,
+}: CommentBubbleProps) {
   const imgSrc = habboHeadUrl(avatarNick || author)
   const [likeCount, setLikeCount] = useState(likes)
   const [liking, setLiking] = useState(false)
@@ -78,11 +94,13 @@ export default function CommentBubble({ id, author, date, html, likes = 0, avata
                 <span className="text-[color:var(--foreground)]/55">{date}</span>
               </>
             ) : null}
-            <span className="ml-auto inline-flex items-center gap-3">
-              <span className="text-[color:var(--foreground)]/65">{likeCount} like{likeCount > 1 ? "s" : ""}</span>
-              <button type="button" onClick={onLike} className="text-[#2596FF] hover:underline disabled:opacity-50" aria-label="Aimer ce commentaire" disabled={!canInteract || liking}>{liking ? '...' : 'Aimer'}</button>
-              <button type="button" onClick={onReport} className="text-[color:var(--foreground)]/70 hover:underline" aria-label="Signaler ce commentaire" disabled={!canInteract}>Signaler</button>
-            </span>
+            {showActions ? (
+              <span className="ml-auto inline-flex items-center gap-3">
+                <span className="text-[color:var(--foreground)]/65">{likeCount} like{likeCount > 1 ? "s" : ""}</span>
+                <button type="button" onClick={onLike} className="text-[#2596FF] hover:underline disabled:opacity-50" aria-label="Aimer ce commentaire" disabled={!canInteract || liking}>{liking ? '...' : 'Aimer'}</button>
+                <button type="button" onClick={onReport} className="text-[color:var(--foreground)]/70 hover:underline" aria-label="Signaler ce commentaire" disabled={!canInteract}>Signaler</button>
+              </span>
+            ) : null}
           </div>
         </div>
       </div>

@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Session } from 'next-auth'
+import { buildHabboAvatarUrl } from '@/lib/habbo-imaging'
 
 type AuthStatus = 'loading' | 'authenticated' | 'unauthenticated'
 
@@ -44,8 +45,14 @@ export default function UserBarLeft({
     if (!isAuthenticated) return null
     const userNick = (session?.user as any)?.nick as string | undefined
     if (!userNick) return null
-    const base = process.env.NEXT_PUBLIC_HABBO_BASE || 'https://www.habbo.fr'
-    return `${base}/habbo-imaging/avatarimage?user=${encodeURIComponent(userNick)}&direction=2&head_direction=3&img_format=png&gesture=sml&headonly=1&size=m`
+    return buildHabboAvatarUrl(userNick, {
+      direction: 2,
+      head_direction: 3,
+      img_format: 'png',
+      gesture: 'sml',
+      headonly: 1,
+      size: 'm',
+    })
   }, [isAuthenticated, session?.user])
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {

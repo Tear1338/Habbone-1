@@ -9,10 +9,10 @@ import {
   isBcrypt,
   asTrue,
   asFalse,
-  listRoles,
   tryUpdateHabboSnapshotForUser,
-} from '@/server/directus-service';
-import { getHabboUserByNameForHotel } from '@/lib/habbo';
+} from '@/server/directus/users';
+import { listRoles } from '@/server/directus/roles';
+import { getHabboUserByNameForHotel } from '@/server/habbo-cache';
 
 export const authOptions: NextAuthOptions = {
   session: { strategy: 'jwt' },
@@ -56,7 +56,7 @@ export const authOptions: NextAuthOptions = {
         }
 
         try {
-          const core = await getHabboUserByNameForHotel(user.nick, hotelCode);
+          const core = await getHabboUserByNameForHotel(user.nick, hotelCode, { cache: false });
           void tryUpdateHabboSnapshotForUser(Number(user.id), core);
         } catch {}
 

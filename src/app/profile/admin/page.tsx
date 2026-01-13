@@ -4,20 +4,27 @@ import { redirect } from 'next/navigation';
 import { revalidatePath } from 'next/cache';
 import { authOptions } from '@/auth';
 import { assertAdmin } from '@/server/authz';
+import { adminCount, adminCountUsers } from '@/server/directus/admin';
 import {
   adminUpdateForumTopic,
   adminDeleteForumTopic,
   adminUpdateForumPost,
   adminDeleteForumPost,
+  adminListForumComments,
+  adminUpdateForumComment,
+  adminDeleteForumComment,
+} from '@/server/directus/forum';
+import {
+  adminListNewsComments,
   adminUpdateNews,
   adminDeleteNews,
-  adminCount,
-  adminCountUsers,
-} from '@/server/directus-service';
-import { adminListForumComments, adminListNewsComments, adminUpdateForumComment, adminDeleteForumComment, adminUpdateNewsComment, adminDeleteNewsComment } from '@/server/directus-service';
+  adminUpdateNewsComment,
+  adminDeleteNewsComment,
+} from '@/server/directus/news';
 
 import AdminDashboard from '@/components/admin/AdminDashboard';
-import { listAllNews, listAllPosts, listAllTopics } from '@/lib/directus';
+import { listAllPosts, listAllTopics } from '@/lib/directus/forum';
+import { listAllNews } from '@/lib/directus/news';
 
 export const revalidate = 0;
 

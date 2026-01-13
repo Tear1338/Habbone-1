@@ -1,4 +1,5 @@
 import crypto from 'crypto'
+import { parseTimestamp } from '@/lib/date-utils'
 
 const DEFAULT_CODE_PREFIX = 'H1'
 const DEFAULT_CODE_LENGTH = 6
@@ -30,7 +31,11 @@ function normalizeIso(value: string) {
 
 export function isVerificationExpired(expiresAt: string | null | undefined) {
   if (!expiresAt) return false
-  const ts = Date.parse(normalizeIso(expiresAt))
-  if (Number.isNaN(ts)) return false
+  const normalized = normalizeIso(expiresAt)
+  const ts = parseTimestamp(normalized, { numeric: 'ms', numericString: 'parse' })
+  if (!ts) {
+    if (normalized.startsWith('1970-01-01')) return Date.now() >= 0
+    return false
+  }
   return Date.now() >= ts
 }

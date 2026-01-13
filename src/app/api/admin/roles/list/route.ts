@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { assertAdmin } from '@/server/authz';
-import { listRoles } from '@/server/directus-service';
+import { listRoles } from '@/server/directus/roles';
 import { DEFAULT_ROLES } from '@/lib/config/roles';
 import { resolveHttpError } from '@/lib/http-error';
 

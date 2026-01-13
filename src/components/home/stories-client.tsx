@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
+import { formatDateTimeLoose } from "@/lib/date-utils"
 
 export type StoryItem = {
   id: string
@@ -10,29 +11,6 @@ export type StoryItem = {
   author?: string | null
   date?: string | number | null
   timestamp?: number | null
-}
-
-function fmtDate(v?: string | number | null) {
-  if (v == null || v === "") return ""
-  try {
-    if (typeof v === "number") {
-      // Likely unix seconds from Directus integer field
-      const ms = v > 1e12 ? v : v * 1000
-      const d = new Date(ms)
-      return isNaN(+d) ? String(v) : d.toLocaleString()
-    }
-    // string that might be numeric
-    const n = Number(v)
-    if (!Number.isNaN(n) && n > 0) {
-      const ms = n > 1e12 ? n : n * 1000
-      const d = new Date(ms)
-      return isNaN(+d) ? String(v) : d.toLocaleString()
-    }
-    const d = new Date(v)
-    return isNaN(+d) ? String(v) : d.toLocaleString()
-  } catch {
-    return String(v)
-  }
 }
 
 export default function StoriesClient({ items }: { items: StoryItem[] }) {
@@ -124,7 +102,7 @@ export default function StoriesClient({ items }: { items: StoryItem[] }) {
 
               {/* Footer */}
               <div className="px-4 py-3 border-t border-[var(--bg-800)] text-xs text-[var(--text-500)]">
-                {fmtDate(active.date) || ""}
+                {formatDateTimeLoose(active.date) || ""}
               </div>
             </motion.div>
           </motion.div>

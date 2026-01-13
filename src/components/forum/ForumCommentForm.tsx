@@ -5,10 +5,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import RichEditor from "@/components/editor/RichEditor";
 import { Button } from "@/components/ui/button";
-
-function stripHtml(input: string) {
-  return input ? input.replace(/<[^>]+>/g, " ").replace(/&nbsp;/gi, " ").replace(/\s+/g, " ").trim() : "";
-}
+import { stripHtml } from "@/lib/text-utils";
 
 export default function ForumCommentForm({ topicId }: { topicId: number }) {
   const router = useRouter();
@@ -33,7 +30,7 @@ export default function ForumCommentForm({ topicId }: { topicId: number }) {
     event.preventDefault();
     const formData = new FormData(event.currentTarget);
     const html = String(formData.get("comentario") || "");
-    const plain = stripHtml(html);
+    const plain = stripHtml(html, { replaceNbsp: true });
     if (!plain) {
       toast.error("Commentaire vide");
       return;

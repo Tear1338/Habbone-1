@@ -1,7 +1,8 @@
-﻿import { listTeamMembersByRoles } from '@/server/directus-service'
+﻿import { listTeamMembersByRoles } from '@/server/directus/team'
 import { CalendarClock, Twitter } from 'lucide-react'
 
-const HABBO_BASE = process.env.NEXT_PUBLIC_HABBO_BASE || 'https://www.habbo.fr'
+import { buildHabboAvatarUrl } from '@/lib/habbo-imaging'
+import { formatDateTimeShortFr } from '@/lib/date-utils'
 
 const TEAM_SECTIONS = [
   { role: 'Fondateur', title: 'Fondateur' },
@@ -13,18 +14,20 @@ const TEAM_SECTIONS = [
 export const revalidate = 60
 
 function habboAvatarUrl(nick: string) {
-  const safe = encodeURIComponent(nick)
-  return `${HABBO_BASE}/habbo-imaging/avatarimage?user=${safe}&direction=2&head_direction=3&img_format=png&gesture=sml&headonly=0&size=m`
+  return buildHabboAvatarUrl(nick, {
+    direction: 2,
+    head_direction: 3,
+    img_format: 'png',
+    gesture: 'sml',
+    headonly: 0,
+    size: 'm',
+  })
 }
 
 function formatDate(value?: string | null) {
   if (!value) return 'Date inconnue'
-  const parsed = Date.parse(value)
-  if (Number.isNaN(parsed)) return value
-  return new Intl.DateTimeFormat('fr-FR', {
-    dateStyle: 'short',
-    timeStyle: 'short',
-  }).format(parsed)
+  const formatted = formatDateTimeShortFr(value)
+  return formatted || value
 }
 
 function resolveTwitterLink(value?: string | null) {

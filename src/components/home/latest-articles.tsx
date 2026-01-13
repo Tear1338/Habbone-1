@@ -1,4 +1,4 @@
-import { listNewsForCards } from "@/lib/directus"
+import { listNewsForCards } from "@/lib/directus/news"
 import LatestArticlesClient from "./latest-articles-client"
 
 export default async function LatestArticles() {
@@ -9,4 +9,3 @@ export default async function LatestArticles() {
     : []
   return <LatestArticlesClient items={data} />
 }
-

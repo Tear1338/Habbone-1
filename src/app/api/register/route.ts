@@ -7,10 +7,11 @@ import {
   normalizeHotelCode,
   tryUpdateHabboSnapshotForUser,
   updateUserVerification,
-} from '@/server/directus-service';
-import { getHabboUserByNameForHotel } from '@/lib/habbo';
+} from '@/server/directus/users';
+import { getHabboUserByNameForHotel } from '@/server/habbo-cache';
 import { RegisterBodySchema, formatZodError, buildError } from '@/types/api';
 import { computeVerificationExpiry, generateVerificationCode } from '@/lib/verification';
+import { parseTimestamp } from '@/lib/date-utils';
 import { checkRateLimit } from '@/server/rate-limit'
 import * as logger from '@/server/logger';
 
@@ -52,7 +53,7 @@ export async function POST(req: Request) {
     // Étape 1: Vérifier l'existence du joueur via Habbo API (minimiser les appels)
     let habboCore: any;
     try {
-      habboCore = await getHabboUserByNameForHotel(n, hotelCode);
+      habboCore = await getHabboUserByNameForHotel(n, hotelCode, { cache: false });
     } catch (e: any) {
       // 404 ou autre -> on bloque l'inscription si le pseudo n'existe pas côté Habbo
       const msg = e?.message || '';
@@ -65,7 +66,8 @@ export async function POST(req: Request) {
 
     const verificationCode = generateVerificationCode();
     const verificationExpiresAt = computeVerificationExpiry();
-    const expiresDeltaMs = Date.parse(verificationExpiresAt) - Date.now();
+    const expiresAtMs = parseTimestamp(verificationExpiresAt, { numeric: 'ms', numericString: 'parse' });
+    const expiresDeltaMs = expiresAtMs ? expiresAtMs - Date.now() : null;
     logger.info('[register] verification issued', {
       nick: n,
       hotel: hotelCode,

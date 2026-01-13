@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/auth'
-import { setTopicVote, getTopicVoteSummary } from '@/server/directus-service'
+import { setTopicVote, getTopicVoteSummary } from '@/server/directus/forum'
 import { buildError } from '@/types/api'
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
@@ -29,4 +29,3 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
     return NextResponse.json(buildError('VOTE_FAILED', { code: 'VOTE_FAILED' }), { status: 500 })
   }
 }
-

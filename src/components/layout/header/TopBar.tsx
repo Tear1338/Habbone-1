@@ -4,6 +4,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { motion, type Transition } from 'framer-motion'
 import Link from 'next/link'
 import { navigation, type NavEntry } from './navigation'
+import { buildHabboAvatarUrl } from '@/lib/habbo-imaging'
 
 type TopBarProps = {
   reduce: boolean | null
@@ -18,6 +19,19 @@ declare global {
 
 const itemBaseClasses =
   'inline-flex items-center justify-center px-[15px] font-bold text-[1rem] text-white uppercase min-h-[15vh] max-h-[15vh] transition-colors'
+
+const djAvatarUrl = buildHabboAvatarUrl('Decrypt', {
+  action: '',
+  direction: 2,
+  head_direction: 3,
+  img_format: 'png',
+  gesture: 'sml',
+  headonly: 0,
+  size: 'm',
+  dance: 0,
+  frame_num: 0,
+  effect: '',
+})
 
 function renderLink(entry: NavEntry) {
   if (entry.external && entry.href) {
@@ -209,7 +223,7 @@ export default function TopBar({ reduce, fast, menuOpen, setMenuOpen }: TopBarPr
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 id="avatar-stream"
-                src="https://www.habbo.fr/habbo-imaging/avatarimage?user=Decrypt&action=&direction=2&head_direction=3&img_format=png&gesture=sml&headonly=0&size=m&dance=0&frame_num=0&effect="
+                src={djAvatarUrl}
                 alt="Habbo DJ"
               />
             </div>

@@ -6,6 +6,14 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { toastError, toastSuccess } from '@/lib/sonner'
 import { cn } from '@/lib/utils'
+import {
+  formatCountdownFromMs,
+  formatVerificationExpiryLabel,
+  getVerificationExpiresAtMs,
+  postVerificationRegenerate,
+  postVerificationStatus,
+} from '@/lib/verification-utils'
+import { postRegister } from '@/lib/register-utils'
 import { signIn } from 'next-auth/react'
 import { AlertTriangle, CheckCircle2, Info, RefreshCcw, Sparkles } from 'lucide-react'
 
@@ -87,21 +95,16 @@ function useRegistrationForm(
           hotel: form.hotel,
         }
 
-        const response = await fetch('/api/register', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload),
-        })
-        const json = await response.json().catch(() => ({}))
+        const { ok, data } = await postRegister(payload)
 
-        if (!response.ok) {
-          const message = (json as any)?.error || 'Inscription impossible pour le moment.'
+        if (!ok) {
+          const message = (data as any)?.error || 'Inscription impossible pour le moment.'
           setStatus({ type: 'error', message })
           try { await toastError(message) } catch {}
           return
         }
 
-        const code = (json as any)?.verification?.code as string | undefined
+        const code = (data as any)?.verification?.code as string | undefined
         if (!code) {
           const message = 'Code de vérification manquant. Réessayez.'
           setStatus({ type: 'error', message })
@@ -112,8 +115,8 @@ function useRegistrationForm(
         const verification: VerificationState = {
           nick: payload.nick,
           code,
-          expiresAt: (json as any)?.verification?.expiresAt || null,
-          hotel: (json as any)?.verification?.hotel || payload.hotel,
+          expiresAt: (data as any)?.verification?.expiresAt || null,
+          hotel: (data as any)?.verification?.hotel || payload.hotel,
         }
 
         setStatus({ type: 'info', message: 'Ajoute le code à ta mission Habbo puis lance la vérification.' })
@@ -165,8 +168,8 @@ function useVerificationFlow({
       setCountdown(null)
       return
     }
-    const target = Date.parse(verification.expiresAt)
-    if (Number.isNaN(target)) {
+    const target = getVerificationExpiresAtMs(verification.expiresAt)
+    if (!target) {
       setCountdown(null)
       return
     }
@@ -177,9 +180,7 @@ function useVerificationFlow({
         setStatus({ type: 'error', message: 'Code expiré. Régénère un code.' })
         return true
       }
-      const minutes = Math.floor(diff / 60000)
-      const seconds = Math.floor((diff % 60000) / 1000)
-      setCountdown(`${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`)
+      setCountdown(formatCountdownFromMs(diff))
       return false
     }
     tick()
@@ -196,7 +197,8 @@ function useVerificationFlow({
   const handleCheckStatus = useCallback(async () => {
     if (!verification || checking) return
 
-    if (verification.expiresAt && Date.parse(verification.expiresAt) <= Date.now()) {
+    const expiresAtMs = getVerificationExpiresAtMs(verification.expiresAt)
+    if (expiresAtMs && expiresAtMs <= Date.now()) {
       setStatus({ type: 'error', message: 'Code expiré. Régénère un code.' })
       return
     }
@@ -205,16 +207,14 @@ function useVerificationFlow({
     setStatus(null)
 
     try {
-      const res = await fetch('/api/verify/status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nick: verification.nick, code: verification.code }),
+      const { ok, status, data } = await postVerificationStatus({
+        nick: verification.nick,
+        code: verification.code,
       })
-      const data = await res.json().catch(() => ({}))
 
-      if (!res.ok) {
+      if (!ok) {
         const message =
-          res.status === 410
+          status === 410
             ? (data as any)?.error || 'Code expiré. Régénère un code.'
             : (data as any)?.error || 'Vérification impossible pour le moment.'
         setStatus({ type: 'error', message })
@@ -255,14 +255,12 @@ function useVerificationFlow({
     setStatus(null)
 
     try {
-      const res = await fetch('/api/verify/regenerate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nick: verification.nick, hotel: verification.hotel }),
+      const { ok, data } = await postVerificationRegenerate({
+        nick: verification.nick,
+        hotel: verification.hotel,
       })
-      const data = await res.json().catch(() => ({}))
 
-      if (!res.ok) {
+      if (!ok) {
         const message = (data as any)?.error || 'Impossible de régénérer le code.'
         setStatus({ type: 'error', message })
         return
@@ -527,12 +525,10 @@ function VerificationPanel({
   onRegenerate,
   onBack,
 }: VerificationPanelProps) {
-  const expiresLabel = useMemo(() => {
-    if (!verification.expiresAt) return null
-    const date = new Date(verification.expiresAt)
-    if (Number.isNaN(date.getTime())) return null
-    return date.toLocaleString()
-  }, [verification.expiresAt])
+  const expiresLabel = useMemo(
+    () => formatVerificationExpiryLabel(verification.expiresAt),
+    [verification.expiresAt]
+  )
 
   const steps = useMemo(
     () => [

@@ -3,46 +3,26 @@ import { PageSection } from "@/components/shared/page-section";
 import CommentBubble from "@/components/forum/CommentBubble";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/auth";
+import { buildHabboAvatarUrl } from "@/lib/habbo-imaging";
+import { mediaUrl } from "@/lib/directus/media";
 import {
   getLikesMapForTopicComments,
   getOneTopic,
   getTopicComments,
-  mediaUrl,
-} from "@/lib/directus";
-import type { ForumCommentRecord, ForumTopicRecord } from "@/lib/directus";
+} from "@/lib/directus/forum";
+import type { ForumCommentRecord, ForumTopicRecord } from "@/lib/directus/forum";
+import { formatDateTimeSmart } from "@/lib/date-utils";
 import ForumCommentForm from "@/components/forum/ForumCommentForm";
 import CommentsActionButton from "@/components/forum/CommentsActionButton";
 import TopicVoteButtons from "@/components/forum/TopicVoteButtons";
-import { getTopicVoteSummary } from "@/server/directus-service";
+import { getTopicVoteSummary } from "@/server/directus/forum";
+import { stripHtml } from "@/lib/text-utils";
 
 export const revalidate = 30;
 
 type TopicPageProps = {
   params: Promise<{ id: string }>;
 };
-
-function fmtDateSmart(value?: string | number | null) {
-  if (value == null) return "";
-  // number: seconds or millis
-  if (typeof value === "number") {
-    const millis = value < 1_000_000_000_000 ? value * 1000 : value;
-    const d = new Date(millis);
-    return Number.isNaN(+d) ? "" : d.toLocaleString();
-  }
-  // string: try numeric then ISO/date string
-  const asNum = Number(value);
-  if (Number.isFinite(asNum)) {
-    const millis = asNum < 1_000_000_000_000 ? asNum * 1000 : asNum;
-    const d = new Date(millis);
-    return Number.isNaN(+d) ? "" : d.toLocaleString();
-  }
-  const d = new Date(value);
-  return Number.isNaN(+d) ? "" : d.toLocaleString();
-}
-
-function stripHtml(input: string) {
-  return input ? input.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim() : "";
-}
 
 export default async function TopicPage(props: TopicPageProps) {
   const { id } = await props.params;
@@ -77,12 +57,18 @@ export default async function TopicPage(props: TopicPageProps) {
 
   const title = stripHtml(topic.titulo || `Sujet #${topic.id}`) || `Sujet #${topic.id}`;
   const excerpt = stripHtml(topic.conteudo || "");
-  const publishedAt = fmtDateSmart(topic.data);
+  const publishedAt = formatDateTimeSmart(topic.data);
   const author = stripHtml(topic.autor || "");
   const imageUrl = topic.imagem ? mediaUrl(topic.imagem) : null;
-  const HABBO_BASE = process.env.NEXT_PUBLIC_HABBO_BASE || "https://www.habbo.fr";
   const avatarUrl = author
-    ? `${HABBO_BASE}/habbo-imaging/avatarimage?user=${encodeURIComponent(author)}&direction=2&head_direction=2&img_format=png&gesture=sml&headonly=1&size=m`
+    ? buildHabboAvatarUrl(author, {
+        direction: 2,
+        head_direction: 2,
+        img_format: "png",
+        gesture: "sml",
+        headonly: 1,
+        size: "m",
+      })
     : "/img/avatar_empty.png";
 
   const commentsLabel = `${comments.length} commentaire${comments.length > 1 ? "s" : ""}`;
@@ -130,8 +116,8 @@ export default async function TopicPage(props: TopicPageProps) {
           </header>
           <div className="px-7 sm:px-8 lg:px-10 py-7">
             {imageUrl ? (
-              <div className="relative mb-4 w-full overflow-hidden">
-                <img src={imageUrl} alt="" className="block h-auto max-w-full mx-auto" />
+              <div className="relative mb-4 w-full overflow-hidden rounded-md border border-[color:var(--bg-700)]/60 bg-[color:var(--bg-900)]/40 h-56 sm:h-72 lg:h-[420px]">
+                <img src={imageUrl} alt="" className="h-full w-full object-contain" />
               </div>
             ) : null}
 
@@ -171,7 +157,7 @@ export default async function TopicPage(props: TopicPageProps) {
           comments.map((comment: ForumCommentRecord) => {
             const likeCount = likesMap?.[Number(comment.id)] ?? 0;
             const commentAuthor = stripHtml(comment.autor || "Anonyme");
-            const commentDate = fmtDateSmart(comment.data);
+            const commentDate = formatDateTimeSmart(comment.data);
 
             return (
               <CommentBubble

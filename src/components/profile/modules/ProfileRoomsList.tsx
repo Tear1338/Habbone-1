@@ -2,6 +2,7 @@
 
 import { Card, CardBody, CardHeader, CardTitle } from "./Card";
 import { motion, useReducedMotion } from "framer-motion";
+import { formatDateTimeNative } from "@/lib/date-utils";
 
 type Props = {
   title?: string;
@@ -40,7 +41,7 @@ export function ProfileRoomsList({
                   )}
                   {r?.creationTime && (
                     <div className="text-xs opacity-60 mt-1">
-                      {new Date(r.creationTime).toLocaleString?.() || String(r.creationTime)}
+                      {formatDateTimeNative(r.creationTime)}
                     </div>
                   )}
                 </li>
@@ -60,4 +61,3 @@ export function ProfileRoomsList({
     </motion.div>
   );
 }
-

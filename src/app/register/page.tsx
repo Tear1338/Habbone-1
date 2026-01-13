@@ -5,6 +5,14 @@ import { signIn } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { cn } from '@/lib/utils';
+import {
+  formatCountdownFromMs,
+  formatVerificationExpiryLabel,
+  getVerificationExpiresAtMs,
+  postVerificationRegenerate,
+  postVerificationStatus,
+} from '@/lib/verification-utils';
+import { postRegister } from '@/lib/register-utils';
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -28,20 +36,18 @@ export default function RegisterPage() {
   const [verified, setVerified] = useState(false);
   const [countdown, setCountdown] = useState<string | null>(null);
 
-  const expiresLabel = useMemo(() => {
-    if (!verification?.expiresAt) return null;
-    const date = new Date(verification.expiresAt);
-    if (Number.isNaN(date.getTime())) return null;
-    return date.toLocaleString();
-  }, [verification?.expiresAt]);
+  const expiresLabel = useMemo(
+    () => formatVerificationExpiryLabel(verification?.expiresAt),
+    [verification?.expiresAt],
+  );
 
   useEffect(() => {
     if (!verification?.expiresAt) {
       setCountdown(null);
       return;
     }
-    const target = Date.parse(verification.expiresAt);
-    if (Number.isNaN(target)) {
+    const target = getVerificationExpiresAtMs(verification.expiresAt);
+    if (!target) {
       setCountdown(null);
       return;
     }
@@ -56,9 +62,7 @@ export default function RegisterPage() {
         }
         return true;
       }
-      const minutes = Math.floor(diff / 60000);
-      const seconds = Math.floor((diff % 60000) / 1000);
-      setCountdown(`${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`);
+      setCountdown(formatCountdownFromMs(diff));
       return false;
     };
     tick();
@@ -73,20 +77,15 @@ export default function RegisterPage() {
     setError(null);
     setLoading(true);
     try {
-      const res = await fetch('/api/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          nick: nick.trim(),
-          password,
-          hotel,
-          missao: missao.trim() || undefined,
-        }),
-      });
+      const payload = {
+        nick: nick.trim(),
+        password,
+        hotel,
+        missao: missao.trim() || undefined,
+      };
+      const { ok, data } = await postRegister(payload);
 
-      const data = await res.json().catch(() => ({}));
-
-      if (!res.ok) {
+      if (!ok) {
         setError(data?.error || 'Inscription impossible.');
         return;
       }
@@ -119,21 +118,20 @@ export default function RegisterPage() {
 
   async function checkStatus() {
     if (!verification || checking) return;
-    if (verification.expiresAt && Date.parse(verification.expiresAt) <= Date.now()) {
+    const expiresAtMs = getVerificationExpiresAtMs(verification.expiresAt);
+    if (expiresAtMs && expiresAtMs <= Date.now()) {
       setStatusMessage('Code expiré. Régénérez un code.');
       return;
     }
     setChecking(true);
     setStatusMessage(null);
     try {
-      const res = await fetch('/api/verify/status', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nick: verification.nick, code: verification.code }),
+      const { ok, status, data } = await postVerificationStatus({
+        nick: verification.nick,
+        code: verification.code,
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        if (res.status === 410) {
+      if (!ok) {
+        if (status === 410) {
           setStatusMessage(data?.error || 'Code expiré. Régénérez un code.');
         } else {
           setStatusMessage(data?.error || 'Vérification impossible pour le moment.');
@@ -169,13 +167,11 @@ export default function RegisterPage() {
     setRegenerating(true);
     setStatusMessage(null);
     try {
-      const res = await fetch('/api/verify/regenerate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ nick: verification.nick, hotel: verification.hotel }),
+      const { ok, data } = await postVerificationRegenerate({
+        nick: verification.nick,
+        hotel: verification.hotel,
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) {
+      if (!ok) {
         setStatusMessage(data?.error || 'Impossible de régénérer le code pour le moment.');
         return;
       }

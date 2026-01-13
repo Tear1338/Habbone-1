@@ -1,7 +1,8 @@
 import 'server-only';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/auth';
-import { getDirectusUserById, getRoleById, listRoles } from '@/server/directus-service';
+import { getDirectusUserById } from '@/server/directus/admin-users';
+import { getRoleById, listRoles } from '@/server/directus/roles';
 
 export type AdminAssertion = { userId: string | null };
 
