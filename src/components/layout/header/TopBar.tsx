@@ -5,6 +5,7 @@ import { motion, type Transition } from 'framer-motion'
 import Link from 'next/link'
 import { navigation, type NavEntry } from './navigation'
 import { buildHabboAvatarUrl } from '@/lib/habbo-imaging'
+import { useRadioPlayer } from '@/lib/use-radio-player'
 
 type TopBarProps = {
   reduce: boolean | null
@@ -13,12 +14,8 @@ type TopBarProps = {
   setMenuOpen: (open: boolean) => void
 }
 
-declare global {
-  function Play(v?: number): void
-}
-
 const itemBaseClasses =
-  'inline-flex items-center justify-center px-[15px] font-bold text-[1rem] text-white uppercase min-h-[15vh] max-h-[15vh] transition-colors'
+  'inline-flex items-center justify-center px-[15px] font-bold text-[1rem] text-white uppercase min-h-[80px] md:min-h-[100px] lg:min-h-[120px] transition-colors'
 
 const djAvatarUrl = buildHabboAvatarUrl('Decrypt', {
   action: '',
@@ -148,7 +145,7 @@ function TopLevelItemWithChildren({ entry }: { entry: NavEntry }) {
   return (
     <motion.li
       data-nav-item
-      className="item relative inline-flex items-center justify-center cursor-pointer min-h-[15vh] max-h-[15vh] border-l border-[#141433] hover:bg-[#1F1F3E]"
+      className="item relative inline-flex items-center justify-center cursor-pointer min-h-[80px] md:min-h-[100px] lg:min-h-[120px] border-l border-[#141433] hover:bg-[#1F1F3E]"
       onMouseEnter={() => openMenu(entry.label)}
       onMouseLeave={handleMouseLeave}
       onFocusCapture={() => openMenu(entry.label)}
@@ -196,7 +193,7 @@ function TopLevelItemWithChildren({ entry }: { entry: NavEntry }) {
 function TopLevelItem({ entry }: { entry: NavEntry }) {
   if (!entry.children || entry.children.length === 0) {
     return (
-      <li className="item relative inline-flex items-center justify-center cursor-pointer min-h-[15vh] max-h-[15vh] border-l border-[#141433] hover:bg-[#1F1F3E]">
+      <li className="item relative inline-flex items-center justify-center cursor-pointer min-h-[80px] md:min-h-[100px] lg:min-h-[120px] border-l border-[#141433] hover:bg-[#1F1F3E]">
         {renderLink(entry)}
       </li>
     )
@@ -205,20 +202,26 @@ function TopLevelItem({ entry }: { entry: NavEntry }) {
 }
 
 export default function TopBar({ reduce, fast, menuOpen, setMenuOpen }: TopBarProps) {
+  const radio = useRadioPlayer()
+
+  const handleVolumeChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    radio.setVolume(parseInt(event.target.value, 10))
+  }
+
   return (
     <motion.section
       layout
-      className="navtop w-full min-h-[15vh] max-h-[15vh] bg-[#25254D] border-b border-[#141433] z-[999]"
+      className="navtop w-full min-h-[80px] md:min-h-[100px] lg:min-h-[120px] bg-[#25254D] border-b border-[#141433] z-[999]"
       initial={reduce ? { opacity: 0 } : { opacity: 0, y: -10 }}
       animate={reduce ? { opacity: 1 } : { opacity: 1, y: 0 }}
       transition={fast}
     >
       <div className="container max-w-[1200px] mx-auto px-4">
-        <div className="bar-top flex w-full min-h-[15vh] max-h-[15vh] items-center justify-between">
+        <div className="bar-top flex w-full min-h-[80px] md:min-h-[100px] lg:min-h-[120px] items-center justify-between">
           <div className="left flex items-center flex-1 min-w-0">
             <div
               className="avatar flex justify-center items-end min-w-[80px] h-[70px] rounded-[4px] mr-[10px] bg-[#303060] bg-cover bg-center"
-              
+
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
@@ -228,38 +231,42 @@ export default function TopBar({ reduce, fast, menuOpen, setMenuOpen }: TopBarPr
               />
             </div>
             <div className="info-stream flex flex-col justify-between w-full">
-              <div className="text mb-[7px]">
-                <span className="text-[1rem] leading-[20px] text-white">
+              <div className="text mb-[5px]">
+                <span className="text-[0.8rem] leading-[18px] text-white">
                   <span id="programming-stream" className="font-bold">
                     HabbOne Radio
                   </span>{' '}
-                  par <span id="announcer-stream" className="font-bold">Decrypt</span>
+                  <span className="text-[#BEBECE]">par</span>{' '}
+                  <span className="font-bold">Decrypt</span>
+                  {radio.isPlaying && <span className="text-[#0FD52F] text-[0.7rem] ml-2">● LIVE</span>}
+                  {radio.isLoading && <span className="text-[#FFC800] text-[0.7rem] ml-2">● ...</span>}
                 </span>
               </div>
               <div className="range flex items-center flex-wrap gap-2">
                 <button
                   type="button"
-                  className="pause flex items-center justify-center w-[30px] h-[30px] bg-[#2596FF] rounded-[4px] text-white mr-[10px]"
-                  onClick={() => { try { Play(0.6) } catch {} }}
-                  aria-label="Lancer la radio"
+                  className={`pause flex items-center justify-center w-[30px] h-[30px] rounded-[4px] text-white mr-[10px] transition-colors ${radio.isPlaying ? 'bg-[#F92330]' : 'bg-[#2596FF]'} ${radio.isLoading ? 'animate-pulse' : ''}`}
+                  onClick={radio.toggle}
+                  aria-label={radio.isPlaying ? 'Arrêter la radio' : 'Lancer la radio'}
+                  disabled={radio.isLoading}
                 >
-                  <i className="material-icons" id="pause-stream">play_arrow</i>
+                  <i className="material-icons" id="pause-stream">{radio.isPlaying ? 'stop' : 'play_arrow'}</i>
                 </button>
-                <div className="box-volume flex items-center w-[183px] h-[30px] bg-[#141433] rounded-[4px] mr-[10px]">
+                <div className="box-volume hidden md:flex items-center w-full max-w-[183px] h-[30px] bg-[#141433] rounded-[4px] mr-[10px]">
                   <input
                     type="range"
                     className="volume appearance-none w-[150px] h-[5px] ml-[10%] rounded-[10px]"
                     id="volume"
                     min={0}
                     max={100}
-                    defaultValue={60}
+                    value={radio.volume}
+                    onChange={handleVolumeChange}
                     step={1}
                     aria-label="Volume radio"
+                    style={{
+                      backgroundImage: `linear-gradient(to right, #2596FF ${radio.volume}%, #fff ${radio.volume}%)`
+                    }}
                   />
-                </div>
-                <div className="listens flex items-center">
-                  <i className="material-icons icon max-w-[30px] p-[5px] pl-[6px] text-[1.125rem] bg-[#141433] rounded-[4px] text-white mr-[5px]">personnes</i>
-                  <span id="listeners-stream" className="font-bold text-[0.875rem] text-[#BEBECE]"></span>
                 </div>
               </div>
             </div>
@@ -267,7 +274,7 @@ export default function TopBar({ reduce, fast, menuOpen, setMenuOpen }: TopBarPr
 
           <nav
             id="navbar-main"
-            className="navbar hidden lg:flex justify-end min-h-[15vh] max-h-[15vh] p-0 ml-auto mr-[2rem]"
+            className="navbar hidden lg:flex justify-end min-h-[80px] md:min-h-[100px] lg:min-h-[120px] p-0 ml-auto mr-[2rem]"
             data-nav-container="true"
             aria-label="Navigation principale"
           >

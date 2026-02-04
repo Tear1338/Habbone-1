@@ -159,3 +159,75 @@ export async function listStoriesService(limit = 30): Promise<unknown[]> {
   }
   return [] as any[];
 }
+
+// ============ ADMIN FUNCTIONS ============
+
+import type { StoryRecord } from './types';
+import { uItem, dItem } from './client';
+
+export async function adminListStories(limit = 500): Promise<StoryRecord[]> {
+  const table = STORIES_TABLE || 'usuarios_storie';
+  try {
+    const rows = await directusService.request(
+      rItems(table as any, {
+        sort: ['-id'] as any,
+        limit,
+      } as any),
+    );
+    if (Array.isArray(rows)) return rows as StoryRecord[];
+  } catch { }
+
+  // Fallback: direct fetch
+  const response = await fetch(`${directusUrl}/items/${encodeURIComponent(table)}?sort=-id&limit=${limit}`, {
+    headers: { Authorization: `Bearer ${serviceToken}` },
+    cache: 'no-store',
+  }).catch(() => null);
+
+  if (response?.ok) {
+    const json = await response.json().catch(() => ({}));
+    return (json?.data ?? []) as StoryRecord[];
+  }
+  return [];
+}
+
+export async function adminUpdateStory(id: number, patch: Partial<StoryRecord>): Promise<void> {
+  const table = STORIES_TABLE || 'usuarios_storie';
+  try {
+    await directusService.request(uItem(table as any, id, patch as any));
+    return;
+  } catch { }
+
+  // Fallback: direct fetch
+  const response = await fetch(`${directusUrl}/items/${encodeURIComponent(table)}/${id}`, {
+    method: 'PATCH',
+    headers: {
+      Authorization: `Bearer ${serviceToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(patch),
+  });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => '');
+    throw new Error(`UPDATE_STORY_FAILED: ${response.status} ${body}`);
+  }
+}
+
+export async function adminDeleteStory(id: number): Promise<void> {
+  const table = STORIES_TABLE || 'usuarios_storie';
+  try {
+    await directusService.request(dItem(table as any, id));
+    return;
+  } catch { }
+
+  // Fallback: direct fetch
+  const response = await fetch(`${directusUrl}/items/${encodeURIComponent(table)}/${id}`, {
+    method: 'DELETE',
+    headers: { Authorization: `Bearer ${serviceToken}` },
+  });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => '');
+    throw new Error(`DELETE_STORY_FAILED: ${response.status} ${body}`);
+  }
+}

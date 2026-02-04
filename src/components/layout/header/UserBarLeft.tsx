@@ -21,6 +21,7 @@ type UserBarLeftProps = {
   onLogin: LoginHandler
   onLogout: () => void
   onRequestRegister: () => void
+  onRequestLogin: () => void
 }
 
 export default function UserBarLeft({
@@ -33,6 +34,7 @@ export default function UserBarLeft({
   onLogin,
   onLogout,
   onRequestRegister,
+  onRequestLogin,
 }: UserBarLeftProps) {
   const [nick, setNick] = useState('')
   const [password, setPassword] = useState('')
@@ -75,7 +77,7 @@ export default function UserBarLeft({
   }, [coins])
 
   return (
-    <div className="login-bar flex items-center w-full min-h-[16vh] border-r border-[#141433] px-4 md:px-5">
+    <div className="login-bar flex items-center w-full min-h-[80px] md:min-h-[100px] lg:min-h-[120px] border-r border-[#141433] px-4 md:px-5">
       {isLoading && (
         <div className="flex items-center w-full">
           <Skeleton className="min-w-[60px] h-[60px] rounded-full bg-white/10 mr-[12px]" />
@@ -104,8 +106,9 @@ export default function UserBarLeft({
         </div>
       )}
 
+      {/* Infos utilisateur: cachées sur petit mobile, visibles sur md+ */}
       {!isLoading && isAuthenticated && (
-        <div className="flex items-center gap-2 ml-[2px] mr-[8px]">
+        <div className="hidden sm:flex items-center gap-2 ml-[2px] mr-[8px]">
           <div className="py-1 px-2 rounded bg-[#1F1F3E] text-[#DDDDDD] font-bold text-[0.85rem]">@{(session?.user as any)?.nick}</div>
           <div className="py-1 px-2 rounded bg-[#1F1F3E] text-[#DDDDDD] font-bold text-[0.85rem] flex items-center gap-1">
             {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -115,8 +118,29 @@ export default function UserBarLeft({
         </div>
       )}
 
+      {/* Mobile: Boutons seulement */}
       {!isLoading && !isAuthenticated && (
-        <form className="info-login flex w-full items-center gap-[18px]" onSubmit={handleSubmit}>
+        <div className="mobile-login flex lg:hidden items-center gap-3">
+          <button
+            type="button"
+            onClick={onRequestLogin}
+            className="uppercase rounded-[4px] h-[50px] px-[14px] py-[14px] font-bold text-[0.875rem] leading-[22px] text-white bg-[#2596FF] hover:brightness-90 transition-all"
+          >
+            Connexion
+          </button>
+          <button
+            type="button"
+            onClick={onRequestRegister}
+            className="uppercase rounded-[4px] h-[50px] px-[14px] py-[14px] font-bold text-[0.875rem] leading-[22px] text-white bg-[#0FD52F] hover:brightness-75 transition-all"
+          >
+            S'inscrire
+          </button>
+        </div>
+      )}
+
+      {/* Desktop: Formulaire inline */}
+      {!isLoading && !isAuthenticated && (
+        <form className="info-login hidden lg:flex w-full items-center gap-[18px]" onSubmit={handleSubmit}>
           <div className="flex flex-1 items-center gap-[10px]">
             <input
               name="nick"
@@ -175,8 +199,9 @@ export default function UserBarLeft({
         </form>
       )}
 
+      {/* Boutons utilisateur connecté: compacts sur mobile */}
       {!isLoading && isAuthenticated && (
-        <div className="box-buttons flex gap-[10px] ml-[10px]" id="logout">
+        <div className="box-buttons flex gap-1 sm:gap-[10px] ml-auto lg:ml-[10px]" id="logout">
           {(session?.user as any)?.role === 'admin' && (
             <TooltipProvider>
               <Tooltip>
@@ -184,15 +209,16 @@ export default function UserBarLeft({
                   <Link
                     href="/profile/admin"
                     aria-label="Admin"
-                    className="rounded-[4px] m-[2px] h-[50px] w-[50px] grid place-items-center text-[#BEBECE] bg-[rgba(255,255,255,.1)] hover:bg-[#2596FF] hover:text-white transition-colors"
+                    className="rounded-[4px] m-[1px] sm:m-[2px] h-[40px] w-[40px] sm:h-[50px] sm:w-[50px] grid place-items-center text-[#BEBECE] bg-[rgba(255,255,255,.1)] hover:bg-[#2596FF] hover:text-white transition-colors"
                   >
-                    <i className="material-icons" aria-hidden>admin_panel_settings</i>
+                    <i className="material-icons text-[20px] sm:text-[24px]" aria-hidden>admin_panel_settings</i>
                   </Link>
                 </TooltipTrigger>
                 <TooltipContent side="top">Admin</TooltipContent>
               </Tooltip>
             </TooltipProvider>
           )}
+          {/* Story: caché sur mobile, visible sur sm+ */}
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -200,9 +226,9 @@ export default function UserBarLeft({
                   type="button"
                   onClick={onOpenStory}
                   aria-label="Publier une storie"
-                  className="rounded-[4px] m-[2px] h-[50px] w-[50px] grid place-items-center text-[#BEBECE] bg-[rgba(255,255,255,.1)] hover:bg-[#2596FF] hover:text-white transition-colors"
+                  className="hidden sm:grid rounded-[4px] m-[1px] sm:m-[2px] h-[40px] w-[40px] sm:h-[50px] sm:w-[50px] place-items-center text-[#BEBECE] bg-[rgba(255,255,255,.1)] hover:bg-[#2596FF] hover:text-white transition-colors"
                 >
-                  <i className="material-icons" aria-hidden>add_a_photo</i>
+                  <i className="material-icons text-[20px] sm:text-[24px]" aria-hidden>add_a_photo</i>
                 </button>
               </TooltipTrigger>
               <TooltipContent side="top">Publier une storie</TooltipContent>
@@ -214,9 +240,9 @@ export default function UserBarLeft({
                 <Link
                   href="/profile"
                   aria-label="Profil"
-                  className="rounded-[4px] m-[2px] h-[50px] w-[50px] grid place-items-center text-[#BEBECE] bg-[rgba(255,255,255,.1)] hover:bg-[#2596FF] hover:text-white transition-colors"
+                  className="rounded-[4px] m-[1px] sm:m-[2px] h-[40px] w-[40px] sm:h-[50px] sm:w-[50px] grid place-items-center text-[#BEBECE] bg-[rgba(255,255,255,.1)] hover:bg-[#2596FF] hover:text-white transition-colors"
                 >
-                  <i className="material-icons" aria-hidden>account_circle</i>
+                  <i className="material-icons text-[20px] sm:text-[24px]" aria-hidden>account_circle</i>
                 </Link>
               </TooltipTrigger>
               <TooltipContent side="top">Profil</TooltipContent>
@@ -228,10 +254,10 @@ export default function UserBarLeft({
                 <button
                   type="button"
                   aria-label="Deconnexion"
-                  className="rounded-[4px] m-[2px] h-[50px] w-[50px] grid place-items-center text-[#BEBECE] bg-[rgba(255,255,255,.1)] hover:bg-[#2596FF] hover:text-white transition-colors"
+                  className="rounded-[4px] m-[1px] sm:m-[2px] h-[40px] w-[40px] sm:h-[50px] sm:w-[50px] grid place-items-center text-[#BEBECE] bg-[rgba(255,255,255,.1)] hover:bg-[#2596FF] hover:text-white transition-colors"
                   onClick={onLogout}
                 >
-                  <i className="material-icons" aria-hidden>logout</i>
+                  <i className="material-icons text-[20px] sm:text-[24px]" aria-hidden>logout</i>
                 </button>
               </TooltipTrigger>
               <TooltipContent side="top">Deconnexion</TooltipContent>

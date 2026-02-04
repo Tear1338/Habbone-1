@@ -94,3 +94,15 @@ export type ForumCategoryRecord = {
   status?: string | null;
   imagem?: string | null;
 };
+
+export type StoryRecord = {
+  id: number;
+  autor: string;
+  image?: string | null;
+  imagem?: string | null;
+  titulo?: string | null;
+  status?: string | null;
+  data?: string | null;
+  dta?: number | null;
+  date_created?: string | null;
+};

@@ -24,6 +24,11 @@ import {
   adminUpdateNewsComment,
   adminDeleteNewsComment,
 } from '@/server/directus/news';
+import {
+  adminListStories,
+  adminUpdateStory,
+  adminDeleteStory,
+} from '@/server/directus/stories';
 
 import AdminDashboardNew from '@/components/admin/AdminDashboardNew';
 
@@ -48,6 +53,7 @@ export default async function AdminPage() {
     topics,
     posts,
     news,
+    stories,
     topicsCount,
     newsCount,
     legacyUsersCount,
@@ -60,6 +66,7 @@ export default async function AdminPage() {
     adminListForumTopics(1000).catch(() => []),
     adminListForumPosts(1000).catch(() => []),
     adminListNews(1000).catch(() => []),
+    adminListStories(500).catch(() => []),
     adminCount('forum_topicos').catch(() => 0),
     adminCount('noticias').catch(() => 0),
     adminCountUsers().catch(() => 0),

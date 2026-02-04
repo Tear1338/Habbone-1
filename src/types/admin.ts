@@ -10,6 +10,7 @@ export type {
     ForumTopicRecord as AdminTopic,
     ForumPostRecord as AdminPost,
     ForumCommentRecord as AdminForumComment,
+    StoryRecord as AdminStory,
 } from "@/server/directus/types";
 
 // Summary stat for dashboard
