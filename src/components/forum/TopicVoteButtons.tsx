@@ -42,8 +42,7 @@ export default function TopicVoteButtons({ topicId, initial, canVote = false }: 
       <button
         type="button"
         onClick={() => vote(1)}
-        disabled={!canVote || busy === 1}
-        className="inline-flex h-9 items-center gap-1 rounded-md border border-black/15 bg-green-600 px-3 text-sm font-bold uppercase tracking-wide text-white disabled:opacity-60"
+        className={`inline-flex items-center gap-2 rounded-[4px] bg-[#16B254] px-3 py-2 text-[14px] font-bold text-white transition ${busy === 1 ? "opacity-80" : "hover:brightness-110"} ${!canVote ? "cursor-default" : ""}`}
         aria-label="Aimer le sujet"
       >
         <ThumbsUp className="h-4 w-4" /> {counts.up}
@@ -51,8 +50,7 @@ export default function TopicVoteButtons({ topicId, initial, canVote = false }: 
       <button
         type="button"
         onClick={() => vote(-1)}
-        disabled={!canVote || busy === -1}
-        className="inline-flex h-9 items-center gap-1 rounded-md border border-black/15 bg-red-600 px-3 text-sm font-bold uppercase tracking-wide text-white disabled:opacity-60"
+        className={`inline-flex items-center gap-2 rounded-[4px] bg-[#E11036] px-3 py-2 text-[14px] font-bold text-white transition ${busy === -1 ? "opacity-80" : "hover:brightness-110"} ${!canVote ? "cursor-default" : ""}`}
         aria-label="Ne pas aimer le sujet"
       >
         <ThumbsDown className="h-4 w-4" /> {counts.down}
@@ -60,4 +58,3 @@ export default function TopicVoteButtons({ topicId, initial, canVote = false }: 
     </div>
   );
 }
-

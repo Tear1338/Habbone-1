@@ -4,198 +4,74 @@ import { useEffect, useMemo, useState } from 'react'
 import { useSession } from 'next-auth/react'
 
 import { buildHabboAvatarUrl } from '@/lib/habbo-imaging'
-import { Button } from '@/components/ui/button'
-import { Switch } from '@/components/ui/switch'
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { toast } from 'sonner'
 
 type AvatarSize = 's' | 'm' | 'l'
 type AvatarFormat = 'png' | 'gif' | 'jpg'
 
-const DIRECTION_OPTIONS = Array.from({ length: 8 }, (_, i) => i)
-
-type Preset = {
-  id: string
-  label: string
-  description: string
-  values: {
-    size: AvatarSize
-    direction: number
-    headDirection: number
-    headOnly: boolean
-    gesture: string
-    action: string
-    effect: string
-    dance: number
-    frameNum: number
-    format: AvatarFormat
-    carryItem: string
-    drinking: boolean
-  }
-}
-
 const ACTION_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: 'std', label: 'Normal' },
+  { value: 'std', label: 'Debout' },
   { value: 'wlk', label: 'Marche' },
-  { value: 'wav', label: 'Ondulation' },
+  { value: 'wav', label: 'Saluer' },
   { value: 'sit', label: "S'asseoir" },
-  { value: 'wlk,wav', label: 'Marcher / saluer' },
-  { value: 'sit,wav', label: "S'asseoir / saluer" },
-  { value: 'lay', label: 'Allonge' },
+  { value: 'lay', label: 'Allongé' },
+  { value: 'wlk,wav', label: 'Marcher + saluer' },
+  { value: 'sit,wav', label: "Assis + saluer" },
+]
+
+const ITEM_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: '999', label: 'Aucun' },
+  { value: '1', label: '💧 Eau' },
+  { value: '6', label: '☕ Café' },
+  { value: '3', label: '🍦 Glace' },
+  { value: '2', label: '🥕 Carotte' },
+  { value: '5', label: '🥤 Soda' },
+  { value: '667', label: '🍸 Cocktail' },
+  { value: '9', label: '💗 Potion d\'amour' },
+  { value: '42', label: '🍵 Thé japonais' },
+  { value: '43', label: '🍅 Jus de tomate' },
+  { value: '44', label: '☠️ Boisson toxique' },
 ]
 
 const GESTURE_OPTIONS: Array<{ value: string; label: string }> = [
   { value: 'std', label: 'Normal' },
-  { value: 'spk', label: 'Parlant' },
-  { value: 'sml', label: 'Sourire' },
-  { value: 'srp', label: 'Surpris' },
-  { value: 'agr', label: 'Nerveux' },
-  { value: 'sad', label: 'Triste' },
-  { value: 'lol', label: 'Sans visage' },
+  { value: 'sml', label: '😊 Sourire' },
+  { value: 'spk', label: '🗣️ Parlant' },
+  { value: 'srp', label: '😲 Surpris' },
+  { value: 'agr', label: '😠 Énervé' },
+  { value: 'sad', label: '😢 Triste' },
+  { value: 'lol', label: '🫥 Sans visage' },
 ]
 
-const ITEM_OPTIONS: Array<{ value: string; label: string }> = [
-  { value: '999', label: 'Aucun objet' },
-  { value: '1', label: 'Eau' },
-  { value: '44', label: 'Boisson toxique' },
-  { value: '6', label: 'Cafe' },
-  { value: '2', label: 'Carotte' },
-  { value: '42', label: 'The japonais' },
-  { value: '667', label: 'Cocktail' },
-  { value: '5', label: 'Refri' },
-  { value: '9', label: "Potion d'amour" },
-  { value: '3', label: 'Glace' },
-  { value: '33', label: 'Glace Callipo' },
-  { value: '43', label: 'Jus de tomate' },
+const FRAME_OPTIONS: Array<{ value: number; label: string }> = [
+  { value: 0, label: 'Frame 0' },
+  { value: 1, label: 'Frame 1' },
+  { value: 2, label: 'Frame 2' },
+  { value: 3, label: 'Frame 3' },
 ]
 
-const PRESETS: Preset[] = [
-  {
-    id: 'profile',
-    label: 'Profil',
-    description: 'Avatar complet pour profil',
-    values: {
-      size: 'l',
-      direction: 2,
-      headDirection: 3,
-      headOnly: false,
-      gesture: 'sml',
-      action: 'std',
-      effect: '',
-      dance: 0,
-      frameNum: 0,
-      format: 'png',
-      carryItem: '999',
-      drinking: false,
-    },
-  },
-  {
-    id: 'head',
-    label: 'Tete',
-    description: 'Focus tete uniquement',
-    values: {
-      size: 'm',
-      direction: 2,
-      headDirection: 2,
-      headOnly: true,
-      gesture: 'std',
-      action: 'std',
-      effect: '',
-      dance: 0,
-      frameNum: 0,
-      format: 'png',
-      carryItem: '999',
-      drinking: false,
-    },
-  },
-  {
-    id: 'forum',
-    label: 'Forum',
-    description: 'Miniature tete pour posts',
-    values: {
-      size: 's',
-      direction: 2,
-      headDirection: 2,
-      headOnly: true,
-      gesture: 'std',
-      action: 'std',
-      effect: '',
-      dance: 0,
-      frameNum: 0,
-      format: 'png',
-      carryItem: '999',
-      drinking: false,
-    },
-  },
-  {
-    id: 'walk',
-    label: 'Marche',
-    description: 'Action wlk pour mouvement',
-    values: {
-      size: 'l',
-      direction: 3,
-      headDirection: 3,
-      headOnly: false,
-      gesture: 'std',
-      action: 'wlk',
-      effect: '',
-      dance: 0,
-      frameNum: 0,
-      format: 'png',
-      carryItem: '999',
-      drinking: false,
-    },
-  },
-  {
-    id: 'dance',
-    label: 'Danse',
-    description: 'Animation de danse',
-    values: {
-      size: 'l',
-      direction: 2,
-      headDirection: 3,
-      headOnly: false,
-      gesture: 'std',
-      action: 'std',
-      effect: '',
-      dance: 1,
-      frameNum: 0,
-      format: 'gif',
-      carryItem: '999',
-      drinking: false,
-    },
-  },
+const FORMAT_OPTIONS: Array<{ value: string; label: string }> = [
+  { value: 'png', label: 'PNG' },
+  { value: 'gif', label: 'GIF (animé)' },
+  { value: 'jpg', label: 'JPG' },
 ]
 
-const DEFAULT_PRESET: Preset = PRESETS[0]
-
-function buildDownloadUrl(user: string, params: Record<string, string | number | boolean | null | undefined>) {
-  const qs = new URLSearchParams()
-  qs.set('user', user)
-  for (const [key, value] of Object.entries(params)) {
-    if (value === undefined || value === null || value === '') continue
-    qs.set(key, String(value))
-  }
-  return `/api/habbo/imager?${qs.toString()}`
-}
+/* ─── Custom dropdown chevron SVG ─── */
+const chevronSvg = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' fill='none'%3E%3Cpath d='M1 1.5l5 5 5-5' stroke='%23BEBECE' stroke-width='1.5' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E")`
 
 export default function ImagerClient() {
   const { data: session } = useSession()
   const [user, setUser] = useState('')
   const [userDirty, setUserDirty] = useState(false)
-  const [activePresetId, setActivePresetId] = useState(DEFAULT_PRESET.id)
-  const [size, setSize] = useState<AvatarSize>('l')
-  const [format, setFormat] = useState<AvatarFormat>('png')
+  const [size, setSize] = useState<AvatarSize>('m')
   const [direction, setDirection] = useState(2)
   const [headDirection, setHeadDirection] = useState(3)
   const [headOnly, setHeadOnly] = useState(false)
   const [gesture, setGesture] = useState('sml')
   const [action, setAction] = useState('std')
-  const [effect, setEffect] = useState('')
-  const [dance, setDance] = useState(0)
   const [frameNum, setFrameNum] = useState(0)
   const [carryItem, setCarryItem] = useState('999')
-  const [drinking, setDrinking] = useState(false)
+  const [format, setFormat] = useState<AvatarFormat>('png')
 
   const sessionNick =
     typeof (session?.user as { nick?: unknown } | undefined)?.nick === 'string'
@@ -204,9 +80,7 @@ export default function ImagerClient() {
 
   useEffect(() => {
     if (userDirty) return
-    if (sessionNick) {
-      setUser(sessionNick)
-    }
+    if (sessionNick) setUser(sessionNick)
   }, [sessionNick, userDirty])
 
   const safeUser = user.trim()
@@ -215,8 +89,7 @@ export default function ImagerClient() {
     const actionBase = action.trim() || 'std'
     const gestureValue = gesture.trim() || 'std'
     const hasCarry = carryItem !== '999'
-    const carryType = drinking ? 'drk' : 'crr'
-    const actionWithCarry = hasCarry ? `${actionBase},${carryType}=${carryItem}` : actionBase
+    const actionWithCarry = hasCarry ? `${actionBase},crr=${carryItem}` : actionBase
 
     const base: Record<string, string | number> = {
       direction,
@@ -227,482 +100,234 @@ export default function ImagerClient() {
       gesture: gestureValue,
       action: actionWithCarry,
     }
-    if (effect.trim()) base.effect = effect.trim()
-    if (dance > 0) base.dance = dance
     if (frameNum > 0) base.frame_num = frameNum
     return base
-  }, [
-    action,
-    carryItem,
-    dance,
-    direction,
-    drinking,
-    effect,
-    format,
-    frameNum,
-    gesture,
-    headDirection,
-    headOnly,
-    size,
-  ])
+  }, [action, carryItem, direction, format, frameNum, gesture, headDirection, headOnly, size])
 
   const previewUrl = useMemo(() => {
     if (!safeUser) return '/img/avatar_empty.png'
     return buildHabboAvatarUrl(safeUser, params)
   }, [params, safeUser])
 
-  const downloadUrl = useMemo(() => {
-    if (!safeUser) return ''
-    return buildDownloadUrl(safeUser, params)
-  }, [params, safeUser])
-
-  const hasCarry = carryItem !== '999'
   const canAct = safeUser.length > 0
-  const downloadName = safeUser ? `${safeUser}-avatar.${format}` : 'habbo-avatar.png'
 
-  const handleCarryItemChange = (value: string) => {
-    setCarryItem(value)
-    if (value === '999') {
-      setDrinking(false)
-    }
-  }
-
-  const nudgeDirection = (current: number, delta: number) => {
+  const nudge = (current: number, delta: number) => {
     const next = current + delta
-    if (next < 0 || next > 7) return current
-    return next
-  }
-
-  const nudgeBody = (delta: number) => {
-    setDirection((prev) => nudgeDirection(prev, delta))
-  }
-
-  const nudgeHead = (delta: number) => {
-    setHeadDirection((prev) => nudgeDirection(prev, delta))
-  }
-
-  const applyPreset = (preset: Preset) => {
-    const next = preset.values
-    setSize(next.size)
-    setDirection(next.direction)
-    setHeadDirection(next.headDirection)
-    setHeadOnly(next.headOnly)
-    setGesture(next.gesture)
-    setAction(next.action)
-    setEffect(next.effect)
-    setDance(next.dance)
-    setFrameNum(next.frameNum)
-    setFormat(next.format)
-    setCarryItem(next.carryItem)
-    setDrinking(next.drinking)
-    setActivePresetId(preset.id)
-  }
-
-  const useSessionAvatar = () => {
-    if (!sessionNick) {
-      toast.error('Aucun pseudo detecte sur la session.')
-      return
-    }
-    setUser(sessionNick)
-    setUserDirty(false)
-    toast.info(`Avatar charge pour ${sessionNick}.`)
-  }
-
-  const resetControls = () => {
-    applyPreset(DEFAULT_PRESET)
-    if (sessionNick) {
-      setUser(sessionNick)
-      setUserDirty(false)
-    }
+    return next < 0 ? 7 : next > 7 ? 0 : next
   }
 
   const handleCopyUrl = async () => {
     if (!canAct) {
-      toast.error('Renseigne un pseudo avant de copier l URL.')
+      toast.error('Renseigne un pseudo avant de copier l\'URL.')
       return
     }
     try {
       await navigator.clipboard.writeText(previewUrl)
-      toast.success('URL copiee dans le presse-papiers.')
+      toast.success('URL copiée dans le presse-papiers !')
     } catch {
       toast.error('Impossible de copier automatiquement.')
     }
   }
 
   return (
-    <div className="space-y-6">
-      <section className="rounded-md border border-[color:var(--bg-700)]/55 bg-[color:var(--bg-900)]/35 px-6 py-6 shadow-[0_24px_60px_-50px_rgba(0,0,0,0.9)]">
-        <div className="mb-5 text-[color:var(--foreground)]">
-          <h2 className="text-base font-semibold uppercase tracking-[0.08em]">Habbo Imager</h2>
-          <p className="text-xs text-[color:var(--foreground)]/60">
-            Renseigne un pseudo puis ajuste: la preview se met a jour instantanement.
-          </p>
+    <div className="w-full">
+      {/* ─── Header ─── */}
+      <div className="flex h-[60px] items-center rounded-t-[4px] border border-b-0 border-[#141433] bg-[#1F1F3E] px-5 sm:h-[76px]">
+        <div className="flex items-center gap-3">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/img/photo.png" alt="" className="h-[36px] w-[26px] sm:h-[44px] sm:w-[31px] image-pixelated" />
+          <span
+            className="text-base font-bold uppercase tracking-[0.08em] text-[#DDD] sm:text-lg"
+            style={{ textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}
+          >
+            Habbo Imager
+          </span>
         </div>
+      </div>
 
-        <div className="mb-6 rounded-md border border-[color:var(--bg-700)]/70 bg-[color:var(--bg-900)]/45 p-4">
-          <div className="mb-3 text-[11px] font-semibold uppercase tracking-[0.12em] text-[color:var(--foreground)]/60">
-            Essentiel
-          </div>
-          <div className="flex flex-col gap-3 md:flex-row md:items-end">
-            <div className="flex-1 space-y-1.5">
-              <Field label="Pseudo Habbo">
-                <input
-                  value={user}
-                  onChange={(event) => {
-                    if (!userDirty) setUserDirty(true)
-                    setUser(event.target.value)
-                  }}
-                  placeholder={sessionNick || 'Ex: Decrypt'}
-                  className="h-11 w-full rounded-md border border-[color:var(--bg-700)]/70 bg-[color:var(--bg-900)]/55 px-3 text-sm text-[color:var(--foreground)] focus:border-[color:var(--bg-300)] focus:outline-none focus:ring-2 focus:ring-[color:var(--bg-300)]/30"
-                />
-              </Field>
-              <p className="text-xs text-[color:var(--foreground)]/55">
-                Astuce: utilise les presets puis ajuste seulement ce dont tu as besoin.
-              </p>
-            </div>
-            {sessionNick ? (
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={useSessionAvatar}
-                className="h-11 border border-[color:var(--bg-600)]/70 bg-[color:var(--bg-800)]/70 text-[color:var(--foreground)] hover:bg-[color:var(--bg-700)]"
-              >
-                Mon avatar
-              </Button>
-            ) : null}
-            <Button
-              type="button"
-              variant="outline"
-              onClick={resetControls}
-              className="h-11 border border-[color:var(--bg-600)]/70 bg-[color:var(--bg-900)]/55 text-[color:var(--foreground)] hover:border-[color:var(--bg-500)]/70 hover:text-white"
-            >
-              Reinitialiser
-            </Button>
-          </div>
-        </div>
+      {/* ─── Body ─── */}
+      <div className="rounded-b-[4px] border border-[#141433] bg-[#272746] px-4 py-5 sm:px-7 sm:py-6">
+        {/* Desktop: side-by-side | Mobile: stacked */}
+        <div className="flex flex-col gap-6 lg:flex-row lg:gap-8">
 
-        <div className="mb-6 space-y-2">
-          <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[color:var(--foreground)]/55">
-            Presets rapides
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {PRESETS.map((preset) => {
-              const isActive = preset.id === activePresetId
-              return (
-                <button
-                  key={preset.id}
-                  type="button"
-                  onClick={() => applyPreset(preset)}
-                  className={`inline-flex items-center gap-2 rounded-md border px-3 py-2 text-xs font-semibold uppercase tracking-[0.08em] transition ${isActive
-                      ? 'border-[color:var(--blue-500)]/80 bg-[color:var(--blue-500)]/15 text-white'
-                      : 'border-[color:var(--bg-600)]/70 bg-[color:var(--bg-900)]/55 text-[color:var(--foreground)]/85 hover:border-[color:var(--bg-500)]/70 hover:text-white'
-                    }`}
-                  title={preset.description}
-                >
-                  {preset.label}
-                </button>
-              )
-            })}
-          </div>
-        </div>
-
-        <div className="grid gap-8 lg:grid-cols-[360px_minmax(0,1fr)]">
-          <div className="grid gap-4 md:grid-cols-2">
-            <SectionTitle className="md:col-span-2">Vue</SectionTitle>
-            <Field label="Taille">
-              <div className="flex gap-4">
-                {(['l', 'm', 's'] as const).map((v) => (
-                  <label key={v} className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="radio"
-                      name="avatar-size"
-                      value={v}
-                      checked={size === v}
-                      onChange={() => setSize(v)}
-                      className="accent-[#0FD52F]"
-                    />
-                    <span className={`text-sm font-medium ${size === v ? 'text-white' : 'text-[color:var(--foreground)]/65'}`}>
-                      {v === 'l' ? 'Grande' : v === 'm' ? 'Normal' : 'Pequeno'}
-                    </span>
-                  </label>
-                ))}
-              </div>
-            </Field>
-
-            <Field label="Direction">
-              <div className="flex items-center gap-2">
-                <ArrowButton label="Direction gauche" onClick={() => nudgeBody(-1)} disabled={direction <= 0}>
-                  chevron_left
-                </ArrowButton>
-                <div className="flex h-11 min-w-14 items-center justify-center rounded-md border border-[color:var(--bg-700)]/70 bg-[color:var(--bg-900)]/55 px-3 text-sm font-semibold text-[color:var(--foreground)]">
-                  {direction}
-                </div>
-                <ArrowButton label="Direction droite" onClick={() => nudgeBody(1)} disabled={direction >= 7}>
-                  chevron_right
-                </ArrowButton>
-                <select
-                  value={direction}
-                  onChange={(event) => setDirection(Number(event.target.value))}
-                  className="ml-auto h-11 w-20 rounded-md border border-[color:var(--bg-700)]/70 bg-[color:var(--bg-900)]/55 px-3 text-sm text-[color:var(--foreground)] focus:border-[color:var(--bg-300)] focus:outline-none focus:ring-2 focus:ring-[color:var(--bg-300)]/30"
-                  aria-label="Direction corps"
-                >
-                  {DIRECTION_OPTIONS.map((value) => (
-                    <option key={value} value={value}>
-                      {value}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </Field>
-
-            <Field label="Direction tete">
-              <div className="flex items-center gap-2">
-                <ArrowButton label="Tete vers la gauche" onClick={() => nudgeHead(-1)} disabled={headDirection <= 0}>
-                  chevron_left
-                </ArrowButton>
-                <div className="flex h-11 min-w-14 items-center justify-center rounded-md border border-[color:var(--bg-700)]/70 bg-[color:var(--bg-900)]/55 px-3 text-sm font-semibold text-[color:var(--foreground)]">
-                  {headDirection}
-                </div>
-                <ArrowButton label="Tete vers la droite" onClick={() => nudgeHead(1)} disabled={headDirection >= 7}>
-                  chevron_right
-                </ArrowButton>
-                <select
-                  value={headDirection}
-                  onChange={(event) => setHeadDirection(Number(event.target.value))}
-                  className="ml-auto h-11 w-20 rounded-md border border-[color:var(--bg-700)]/70 bg-[color:var(--bg-900)]/55 px-3 text-sm text-[color:var(--foreground)] focus:border-[color:var(--bg-300)] focus:outline-none focus:ring-2 focus:ring-[color:var(--bg-300)]/30"
-                  aria-label="Direction tete"
-                >
-                  {DIRECTION_OPTIONS.map((value) => (
-                    <option key={value} value={value}>
-                      {value}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </Field>
-
-            <SectionTitle className="md:col-span-2">Posture & expression</SectionTitle>
-            <Field label="Expression">
-              <select
-                value={gesture}
-                onChange={(event) => setGesture(event.target.value)}
-                className="h-11 w-full rounded-md border border-[color:var(--bg-700)]/70 bg-[color:var(--bg-900)]/55 px-3 text-sm text-[color:var(--foreground)] focus:border-[color:var(--bg-300)] focus:outline-none focus:ring-2 focus:ring-[color:var(--bg-300)]/30"
-              >
-                {GESTURE_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </Field>
-
-            <Field label="Action">
-              <select
-                value={action}
-                onChange={(event) => setAction(event.target.value)}
-                className="h-11 w-full rounded-md border border-[color:var(--bg-700)]/70 bg-[color:var(--bg-900)]/55 px-3 text-sm text-[color:var(--foreground)] focus:border-[color:var(--bg-300)] focus:outline-none focus:ring-2 focus:ring-[color:var(--bg-300)]/30"
-              >
-                {ACTION_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </Field>
-
-            <SectionTitle className="md:col-span-2">Objet</SectionTitle>
-            <Field label="Objet">
-              <select
-                value={carryItem}
-                onChange={(event) => handleCarryItemChange(event.target.value)}
-                className="h-11 w-full rounded-md border border-[color:var(--bg-700)]/70 bg-[color:var(--bg-900)]/55 px-3 text-sm text-[color:var(--foreground)] focus:border-[color:var(--bg-300)] focus:outline-none focus:ring-2 focus:ring-[color:var(--bg-300)]/30"
-              >
-                {ITEM_OPTIONS.map((option) => (
-                  <option key={option.value} value={option.value}>
-                    {option.label}
-                  </option>
-                ))}
-              </select>
-            </Field>
-
-            <div className="md:col-span-2">
-              <div className="flex items-center justify-between rounded-md border border-[color:var(--bg-700)]/70 bg-[color:var(--bg-900)]/45 px-4 py-3">
-                <div className="space-y-0.5">
-                  <div className="text-xs font-semibold uppercase tracking-[0.08em] text-[color:var(--foreground)]/70">
-                    En buvant ?
-                  </div>
-                  <div className="text-xs text-[color:var(--foreground)]/55">
-                    Active drk=ID (necessite un objet).
-                  </div>
-                </div>
-                <Switch
-                  checked={hasCarry && drinking}
-                  onCheckedChange={(checked) => setDrinking(Boolean(checked))}
-                  disabled={!hasCarry}
-                  aria-label="En buvant"
-                />
-              </div>
-            </div>
-
-            <div className="md:col-span-2">
-              <label className="flex items-center gap-3 rounded-md border border-[color:var(--bg-700)]/70 bg-[color:var(--bg-900)]/45 px-4 py-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={headOnly}
-                  onChange={(e) => setHeadOnly(e.target.checked)}
-                  className="accent-[#0FD52F] h-4 w-4"
-                />
-                <div className="space-y-0.5">
-                  <div className="text-xs font-semibold uppercase tracking-[0.08em] text-[color:var(--foreground)]/70">
-                    Head only
-                  </div>
-                  <div className="text-xs text-[color:var(--foreground)]/55">Afficher uniquement la tete</div>
-                </div>
-              </label>
-            </div>
-
-            <SectionTitle className="md:col-span-2">Options supplémentaires</SectionTitle>
-            <Field label="Effet">
-              <select
-                value={effect}
-                onChange={(event) => setEffect(event.target.value)}
-                className="h-11 w-full rounded-md border border-[color:var(--bg-700)]/70 bg-[color:var(--bg-900)]/55 px-3 text-sm text-[color:var(--foreground)] focus:border-[color:var(--bg-300)] focus:outline-none focus:ring-2 focus:ring-[color:var(--bg-300)]/30"
-              >
-                <option value="">Aucun</option>
-                <option value="33">Effet 33</option>
-                <option value="70">Effet 70</option>
-                <option value="29">Effet 29</option>
-                <option value="1">Effet 1</option>
-              </select>
-            </Field>
-            <Field label="Danse">
-              <select
-                value={dance}
-                onChange={(event) => setDance(Number(event.target.value))}
-                className="h-11 w-full rounded-md border border-[color:var(--bg-700)]/70 bg-[color:var(--bg-900)]/55 px-3 text-sm text-[color:var(--foreground)] focus:border-[color:var(--bg-300)] focus:outline-none focus:ring-2 focus:ring-[color:var(--bg-300)]/30"
-              >
-                {[0, 1, 2, 3, 4].map((value) => (
-                  <option key={value} value={value}>
-                    {value}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Format">
-              <select
-                value={format}
-                onChange={(event) => setFormat(event.target.value as AvatarFormat)}
-                className="h-11 w-full rounded-md border border-[color:var(--bg-700)]/70 bg-[color:var(--bg-900)]/55 px-3 text-sm text-[color:var(--foreground)] focus:border-[color:var(--bg-300)] focus:outline-none focus:ring-2 focus:ring-[color:var(--bg-300)]/30"
-              >
-                <option value="png">PNG</option>
-                <option value="gif">GIF</option>
-                <option value="jpg">JPG</option>
-              </select>
-            </Field>
-            <Field label="Frame">
-              <select
-                value={frameNum}
-                onChange={(event) => setFrameNum(Number(event.target.value))}
-                className="h-11 w-full rounded-md border border-[color:var(--bg-700)]/70 bg-[color:var(--bg-900)]/55 px-3 text-sm text-[color:var(--foreground)] focus:border-[color:var(--bg-300)] focus:outline-none focus:ring-2 focus:ring-[color:var(--bg-300)]/30"
-              >
-                {[0, 1, 2, 3, 4, 5].map((value) => (
-                  <option key={value} value={value}>
-                    {value}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          </div>
-
-          <aside className="order-first space-y-4 rounded-md border border-[color:var(--bg-700)]/70 bg-[color:var(--bg-800)]/55 p-4 shadow-[0_18px_55px_-45px_rgba(0,0,0,0.75)]">
-            <div className="flex items-center justify-between">
-              <div className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--foreground)]/60">
-                Preview
-              </div>
-              <div className="text-[11px] text-[color:var(--foreground)]/45">{size.toUpperCase()}</div>
-            </div>
-
-            <div className="grid min-h-[260px] place-items-center rounded-md border border-dashed border-[color:var(--bg-600)]/70 bg-[color:var(--bg-900)]/40 p-4">
+          {/* ── Left column: Preview + Direction controls ── */}
+          <div className="flex flex-col items-center gap-3 lg:w-[208px] lg:flex-shrink-0 lg:items-stretch">
+            {/* Preview panel */}
+            <div className="flex h-[180px] w-full max-w-[240px] items-center justify-center rounded-[8px] border border-[rgba(255,255,255,0.2)] bg-[rgba(255,255,255,0.05)] p-4 lg:h-[173px] lg:max-w-none">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={previewUrl}
                 alt={safeUser || 'Avatar preview'}
-                className="image-pixelated h-56 w-56 object-contain"
+                className="max-h-[140px] max-w-[140px] object-contain image-pixelated"
               />
             </div>
 
-            {!canAct ? (
-              <p className="text-xs text-[color:var(--foreground)]/55">
-                Indique un pseudo pour activer la preview et le telechargement.
-              </p>
-            ) : null}
+            {/* Direction controls - side by side on mobile, stacked on desktop */}
+            <div className="flex w-full max-w-[240px] gap-2 lg:flex-col lg:max-w-none lg:gap-3">
+              {/* Head direction */}
+              <div className="flex flex-1 items-center gap-1">
+                <ArrowBtn onClick={() => setHeadDirection(nudge(headDirection, -1))} label="Tête gauche" dir="left" />
+                <div className="flex h-[44px] flex-1 items-center justify-center rounded-[4px] border-2 border-[rgba(255,255,255,0.1)] bg-[rgba(0,0,0,0.1)] text-xs font-bold text-[#DDD] sm:h-[50px] sm:text-sm">
+                  Tête
+                </div>
+                <ArrowBtn onClick={() => setHeadDirection(nudge(headDirection, 1))} label="Tête droite" dir="right" />
+              </div>
 
+              {/* Body direction */}
+              <div className="flex flex-1 items-center gap-1">
+                <ArrowBtn onClick={() => setDirection(nudge(direction, -1))} label="Corps gauche" dir="left" />
+                <div className="flex h-[44px] flex-1 items-center justify-center rounded-[4px] border-2 border-[rgba(255,255,255,0.1)] bg-[rgba(0,0,0,0.1)] text-xs font-bold text-[#DDD] sm:h-[50px] sm:text-sm">
+                  Corps
+                </div>
+                <ArrowBtn onClick={() => setDirection(nudge(direction, 1))} label="Corps droite" dir="right" />
+              </div>
+            </div>
+
+            {/* Checkbox: Head only */}
+            <button
+              type="button"
+              onClick={() => setHeadOnly(!headOnly)}
+              className="mx-auto flex w-full max-w-[240px] cursor-pointer items-center gap-3 lg:mx-0 lg:mt-1 lg:max-w-none"
+            >
+              <div className="flex h-[22px] w-[22px] flex-shrink-0 items-center justify-center rounded-[4px] border border-[rgba(255,255,255,0.2)] bg-[rgba(0,0,0,0.1)]">
+                {headOnly && <div className="h-[10px] w-[10px] bg-[#2596FF]" />}
+              </div>
+              <span className="text-sm font-normal text-white">Seulement la tête</span>
+            </button>
+          </div>
+
+          {/* ── Right columns: Form fields ── */}
+          <div className="flex-1 space-y-5">
+            {/* Row 1: Nickname + Taille */}
+            <div className="flex flex-col gap-5 sm:flex-row sm:gap-8">
+              <div className="flex-1 space-y-2">
+                <label className="block text-sm font-bold text-[#DDD] sm:text-base">Pseudo</label>
+                <input
+                  value={user}
+                  onChange={(e) => {
+                    if (!userDirty) setUserDirty(true)
+                    setUser(e.target.value)
+                  }}
+                  placeholder={sessionNick || 'Utilisateur'}
+                  className="w-full rounded-[4px] border-2 border-[rgba(255,255,255,0.1)] bg-[rgba(255,255,255,0.05)] px-3 py-3.5 text-sm font-bold text-[#DDD] outline-none transition focus:border-[#2596FF] placeholder:text-[#777]"
+                />
+              </div>
+              <div className="flex-1 space-y-2">
+                <label className="block text-sm font-bold text-[#DDD] sm:text-base">Taille</label>
+                <div className="flex items-center gap-4 py-3.5 sm:justify-between sm:gap-2">
+                  {([
+                    { v: 'l' as const, label: 'Grand' },
+                    { v: 'm' as const, label: 'Normal' },
+                    { v: 's' as const, label: 'Petit' },
+                  ]).map(({ v, label }) => (
+                    <button
+                      key={v}
+                      type="button"
+                      onClick={() => setSize(v)}
+                      className="flex items-center gap-2 sm:gap-3"
+                    >
+                      <div className="flex h-[22px] w-[22px] items-center justify-center rounded-full border border-[rgba(255,255,255,0.2)] bg-[rgba(0,0,0,0.1)] p-[5px]">
+                        {size === v && <div className="h-[10px] w-[10px] rounded-full bg-[#2596FF]" />}
+                      </div>
+                      <span className={`text-sm font-normal ${size === v ? 'text-white' : 'text-[#BEBECE]'}`}>{label}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Row 2: Action + Objet + Expression */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 sm:gap-6">
+              <FigmaSelect label="Action" value={action} onChange={setAction} options={ACTION_OPTIONS} chevron={chevronSvg} />
+              <FigmaSelect label="Objet" value={carryItem} onChange={setCarryItem} options={ITEM_OPTIONS} chevron={chevronSvg} />
+              <FigmaSelect label="Expression" value={gesture} onChange={setGesture} options={GESTURE_OPTIONS} chevron={chevronSvg} />
+            </div>
+
+            {/* Row 3: Frame + Format */}
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 sm:gap-6">
+              <FigmaSelect label="Frame" value={String(frameNum)} onChange={(v) => setFrameNum(Number(v))} options={FRAME_OPTIONS.map(o => ({ value: String(o.value), label: o.label }))} chevron={chevronSvg} />
+              <FigmaSelect label="Format" value={format} onChange={(v) => setFormat(v as AvatarFormat)} options={FORMAT_OPTIONS} chevron={chevronSvg} />
+            </div>
+
+            {/* Copy URL button */}
             <button
               type="button"
               onClick={handleCopyUrl}
               disabled={!canAct}
-              className={`flex w-full items-center justify-center gap-2 rounded-md h-12 text-sm font-bold uppercase tracking-[0.08em] transition ${canAct
-                  ? 'bg-[#0FD52F] text-white hover:bg-[#0CBF28] shadow-lg'
-                  : 'pointer-events-none bg-[color:var(--bg-600)]/60 text-[color:var(--foreground)]/45'
-                }`}
+              className="flex w-full items-center justify-center gap-2 rounded-[4px] border-2 border-[#2596FF] px-5 py-3.5 text-sm font-bold uppercase tracking-wider text-white transition hover:bg-[#2596FF]/15 active:bg-[#2596FF]/25 disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              🔗 COPIAR URL
+              <svg width="17" height="17" viewBox="0 0 17 17" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M7.08 9.92a3.54 3.54 0 005 0l2.83-2.83a3.54 3.54 0 00-5-5L8.49 3.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+                <path d="M9.92 7.08a3.54 3.54 0 00-5 0L2.09 9.92a3.54 3.54 0 005 5l1.41-1.42" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+              Copier URL
             </button>
-
-            <div className="rounded-md border border-[color:var(--bg-700)]/70 bg-[color:var(--bg-900)]/55 p-3">
-              <div className="mb-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-[color:var(--foreground)]/55">
-                URL
-              </div>
-              <code className="block break-all text-[11px] text-[color:var(--foreground)]/80">
-                {previewUrl}
-              </code>
-            </div>
-          </aside>
+          </div>
         </div>
-      </section>
-    </div>
-  )
-}
-
-function ArrowButton({
-  label,
-  onClick,
-  disabled,
-  children,
-}: {
-  label: string
-  onClick: () => void
-  disabled?: boolean
-  children: string
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      disabled={disabled}
-      aria-label={label}
-      className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-[color:var(--bg-700)]/70 bg-[color:var(--bg-900)]/55 text-[color:var(--foreground)] transition hover:border-[color:var(--bg-500)]/70 hover:text-white disabled:cursor-not-allowed disabled:opacity-45"
-    >
-      <span className="material-icons text-[22px] leading-none">{children}</span>
-    </button>
-  )
-}
-
-function SectionTitle({ children, className }: { children: string; className?: string }) {
-  return (
-    <div className={className}>
-      <div className="text-[11px] font-semibold uppercase tracking-[0.12em] text-[color:var(--foreground)]/55">
-        {children}
       </div>
     </div>
   )
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+/* ─── Custom Select with Figma styling ─── */
+function FigmaSelect({
+  label,
+  value,
+  onChange,
+  options,
+  chevron,
+}: {
+  label: string
+  value: string
+  onChange: (v: string) => void
+  options: Array<{ value: string; label: string }>
+  chevron: string
+}) {
   return (
-    <label className="space-y-1.5 text-sm font-medium text-[color:var(--foreground)]/85">
-      <span className="text-xs uppercase tracking-[0.08em] text-[color:var(--foreground)]/60">{label}</span>
-      {children}
-    </label>
+    <div className="space-y-2">
+      <label className="block text-sm font-bold text-[#DDD] sm:text-base">{label}</label>
+      <div className="relative">
+        <select
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          className="w-full cursor-pointer appearance-none rounded-[4px] border-2 border-[rgba(255,255,255,0.1)] bg-[#1A1A3A] px-3 py-3.5 pr-10 text-sm font-bold text-[#DDD] outline-none transition focus:border-[#2596FF] hover:border-[rgba(255,255,255,0.2)]"
+          style={{
+            backgroundImage: chevron,
+            backgroundRepeat: 'no-repeat',
+            backgroundPosition: 'right 12px center',
+          }}
+        >
+          {options.map((o) => (
+            <option
+              key={o.value}
+              value={o.value}
+              className="bg-[#1A1A3A] text-[#DDD] py-2"
+            >
+              {o.label}
+            </option>
+          ))}
+        </select>
+      </div>
+    </div>
+  )
+}
+
+/* ─── Arrow Button ─── */
+function ArrowBtn({ onClick, label, dir }: { onClick: () => void; label: string; dir: 'left' | 'right' }) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="flex h-[44px] w-[44px] flex-shrink-0 items-center justify-center rounded-[4px] border-2 border-[rgba(255,255,255,0.1)] text-[#BEBECE] transition hover:border-[rgba(255,255,255,0.2)] hover:bg-[rgba(255,255,255,0.05)] hover:text-white active:bg-[rgba(255,255,255,0.1)] sm:h-[50px] sm:w-[50px]"
+      aria-label={label}
+    >
+      <svg width="14" height="22" viewBox="0 0 14 22" fill="none" xmlns="http://www.w3.org/2000/svg">
+        {dir === 'left' ? (
+          <path d="M12 2L3 11L12 20" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        ) : (
+          <path d="M2 2L11 11L2 20" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" />
+        )}
+      </svg>
+    </button>
   )
 }

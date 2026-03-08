@@ -1,6 +1,16 @@
 "use client";
 
-export default function CommentsActionButton({ isAuthenticated }: { isAuthenticated: boolean }) {
+type CommentsActionButtonProps = {
+  isAuthenticated: boolean
+  className?: string
+  label?: string
+}
+
+export default function CommentsActionButton({
+  isAuthenticated,
+  className,
+  label = "Ecrire commentaire",
+}: CommentsActionButtonProps) {
   const onClick = () => {
     if (isAuthenticated) {
       window.dispatchEvent(new Event('open-comment-form'))
@@ -15,10 +25,9 @@ export default function CommentsActionButton({ isAuthenticated }: { isAuthentica
     <button
       type="button"
       onClick={onClick}
-      className="inline-flex h-9 items-center justify-center rounded-md bg-[color:var(--blue-500)] px-4 text-xs font-bold uppercase tracking-wide text-white hover:bg-[color:var(--blue-700)]"
+      className={className || "inline-flex h-[38px] items-center justify-center rounded-[4px] bg-[#2596FF] px-4 text-[12px] font-bold uppercase tracking-[0.04em] text-white hover:bg-[#2976E8]"}
     >
-      Poster un commentaire
+      {label}
     </button>
   )
 }
-

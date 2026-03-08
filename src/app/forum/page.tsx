@@ -1,40 +1,36 @@
 import Link from 'next/link'
-import { JSX } from 'react'
-import ContentCard from '@/components/shared/content-card'
 import {
+  adminListForumComments,
   listForumCategoriesService,
   listForumTopicsWithCategories,
 } from '@/server/directus/forum'
-import { mediaUrl } from '@/lib/media-url'
-import { formatDateShortFr, parseTimestamp } from '@/lib/date-utils'
+import type {
+  ForumCategoryRecord,
+  ForumCommentRecord,
+  ForumTopicRecord,
+} from '@/server/directus/types'
+import { parseTimestamp } from '@/lib/date-utils'
 import { buildExcerptFromHtml, buildPreviewText, stripHtml } from '@/lib/text-utils'
 
 export const revalidate = 60
 
-type ForumCategory = {
-  id: number | string
-  nome?: string | null
-  descricao?: string | null
-  status?: string | null
+type ForumPageProps = {
+  searchParams?: Promise<Record<string, string | string[]>>
 }
 
-type ForumTopic = {
-  id: number | string
-  titulo?: string | null
-  conteudo?: string | null
-  autor?: string | null
-  data?: string | null
-  views?: number | string | null
-  status?: string | null
-  fixo?: string | number | boolean | null
-  fechado?: string | number | boolean | null
-  cat_id?: string | number | null
-  categoria?: string | number | null
-  imagem?: string | null
+type SectionId = 'habbone' | 'fan-center' | 'habbo'
+
+type SectionConfig = {
+  id: SectionId
+  label: string
+  icon: string
 }
 
-const TARGET_CATEGORY_IDS = ['1', '3', '2', '13']
-const FALLBACK_ICON = '/img/forum.png'
+const SECTION_CONFIG: SectionConfig[] = [
+  { id: 'habbone', label: 'HABBONE', icon: '/img/public.png' },
+  { id: 'fan-center', label: 'CENTRE FAN', icon: '/img/fa-center.png' },
+  { id: 'habbo', label: 'HABBO', icon: '/img/hotel.png' },
+]
 
 function toStringSafe(value: unknown): string {
   if (typeof value === 'string') return value.trim()
@@ -42,35 +38,22 @@ function toStringSafe(value: unknown): string {
   return ''
 }
 
-function toNumber(value: unknown): number | null {
-  if (typeof value === 'number') return Number.isFinite(value) ? value : null
+function toNumberSafe(value: unknown): number {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
   if (typeof value === 'string') {
     const parsed = Number(value.trim())
-    return Number.isFinite(parsed) ? parsed : null
+    return Number.isFinite(parsed) ? parsed : 0
   }
-  return null
+  return 0
 }
 
 function normalizeStatus(status: unknown): string {
   return toStringSafe(status).normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 }
 
-function isActiveCategory(category: ForumCategory): boolean {
-  const normalized = normalizeStatus(category?.status)
-  return normalized === '' || normalized === 'ativo' || normalized === 'active'
-}
-
-function isActiveTopic(topic: ForumTopic): boolean {
-  const normalized = normalizeStatus(topic?.status)
-  return normalized === '' || normalized === 'ativo' || normalized === 'active'
-}
-
-function toTimestamp(value: unknown): number {
-  return parseTimestamp(value, { numeric: 'ms', numericString: 'parse' })
-}
-
-function getCategoryKey(id: unknown): string {
-  return String(id ?? '').trim()
+function isActiveStatus(status: unknown): boolean {
+  const normalized = normalizeStatus(status)
+  return normalized === '' || normalized === 'ativo' || normalized === 'active' || normalized === 'public'
 }
 
 function asBoolean(value: unknown): boolean {
@@ -80,14 +63,14 @@ function asBoolean(value: unknown): boolean {
   return false
 }
 
-function sortTopics(topics: ForumTopic[]): ForumTopic[] {
+function sortTopics(topics: ForumTopicRecord[]): ForumTopicRecord[] {
   return [...topics].sort((a, b) => {
     const pinnedDiff = Number(asBoolean(b.fixo)) - Number(asBoolean(a.fixo))
     if (pinnedDiff !== 0) return pinnedDiff
-    const dateDiff = toTimestamp(b.data) - toTimestamp(a.data)
+    const dateDiff = parseTimestamp(b.data, { numeric: 'ms', numericString: 'parse' }) -
+      parseTimestamp(a.data, { numeric: 'ms', numericString: 'parse' })
     if (dateDiff !== 0) return dateDiff
-    const idDiff = (toNumber(b.id) ?? 0) - (toNumber(a.id) ?? 0)
-    return idDiff
+    return toNumberSafe(b.id) - toNumberSafe(a.id)
   })
 }
 
@@ -99,229 +82,245 @@ function computeIsAllView(viewParam: string | string[] | undefined): boolean {
   return false
 }
 
-type ForumPageProps = {
-  searchParams?: Promise<Record<string, string | string[]>>
+function readQuery(raw: string | string[] | undefined): string {
+  if (typeof raw === 'string') return raw.trim()
+  if (Array.isArray(raw) && typeof raw[0] === 'string') return raw[0].trim()
+  return ''
+}
+
+function resolveSectionId(categoryId: string, categoryName: string): SectionId {
+  const normalizedName = categoryName.toLowerCase()
+  if (categoryId === '1' || normalizedName.includes('habbo')) return 'habbo'
+  if (
+    categoryId === '2' ||
+    categoryId === '13' ||
+    normalizedName.includes('wired') ||
+    normalizedName.includes('video') ||
+    normalizedName.includes('art') ||
+    normalizedName.includes('pixel') ||
+    normalizedName.includes('fan')
+  ) {
+    return 'fan-center'
+  }
+  return 'habbone'
+}
+
+function TopicStatChip({
+  icon,
+  label,
+  value,
+}: {
+  icon: string
+  label: string
+  value: number
+}) {
+  return (
+    <span className="inline-flex h-[38px] items-center gap-1.5 rounded-[2px] border border-white/20 bg-[#1F1F3E] px-3 text-[11px] font-bold text-[#DDD]">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={icon} alt="" className="h-[13px] w-[13px] image-pixelated opacity-95" />
+      <span className="uppercase">{label}</span>
+      <span className="text-[#BEBECE]">{value}</span>
+    </span>
+  )
+}
+
+function TopicRow({
+  topic,
+  responseCount,
+}: {
+  topic: ForumTopicRecord
+  responseCount: number
+}) {
+  const topicId = toNumberSafe(topic.id)
+  const title = stripHtml(toStringSafe(topic.titulo)) || `Sujet #${topicId}`
+  const excerpt = buildPreviewText(buildExcerptFromHtml(toStringSafe(topic.conteudo), { maxLength: 160 }), {
+    maxLength: 140,
+    suffix: '',
+  }) || 'Aucune description disponible.'
+  const postCount = toNumberSafe(topic.views)
+
+  return (
+    <article className="flex flex-col gap-4 border-b border-[#34345A] px-5 py-5 last:border-b-0 lg:flex-row lg:items-center lg:justify-between">
+      <div className="min-w-0">
+        <Link
+          href={`/forum/topic/${topicId}`}
+          className="block text-[16px] font-bold text-white hover:text-[#25B1FF]"
+        >
+          {title}
+        </Link>
+        <p className="mt-1 line-clamp-2 text-[13px] text-[#BEBECE]">{excerpt}</p>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-2 lg:justify-end">
+        <TopicStatChip icon="/img/pincel-mini.png" label="Sujets" value={postCount} />
+        <TopicStatChip icon="/img/comment-mini.png" label="Reponses" value={responseCount} />
+        <Link
+          href={`/forum/topic/${topicId}`}
+          className="inline-flex h-[38px] items-center rounded-[2px] bg-[#2596FF] px-4 text-[11px] font-bold uppercase text-white hover:bg-[#2976E8]"
+        >
+          Voir plus
+        </Link>
+      </div>
+    </article>
+  )
+}
+
+function SectionBlock({
+  label,
+  icon,
+  topics,
+  responsesByTopicId,
+}: {
+  label: string
+  icon: string
+  topics: ForumTopicRecord[]
+  responsesByTopicId: Map<number, number>
+}) {
+  return (
+    <section className="space-y-2">
+      <div className="flex h-[76px] items-center rounded-[4px] border border-black/60 bg-[#1F1F3E] px-5 shadow-[0px_0px_0px_0px_rgba(255,255,255,0.05)]">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={icon} alt="" className="h-[34px] w-[34px] image-pixelated object-contain" />
+        <h2 className="ml-3 text-[18px] font-bold uppercase tracking-[0.04em] text-[#DDD]">{label}</h2>
+      </div>
+
+      <div className="overflow-hidden rounded-[4px] border border-[#1F1F3E] bg-[#272746]">
+        {topics.length === 0 ? (
+          <div className="px-5 py-8 text-center text-sm font-semibold uppercase tracking-[0.06em] text-[#BEBECE]/70">
+            Aucun sujet dans cette section.
+          </div>
+        ) : (
+          topics.map((topic) => (
+            <TopicRow
+              key={topic.id}
+              topic={topic}
+              responseCount={responsesByTopicId.get(toNumberSafe(topic.id)) || 0}
+            />
+          ))
+        )}
+      </div>
+    </section>
+  )
 }
 
 export default async function ForumPage({ searchParams }: ForumPageProps) {
   const resolvedSearchParams = ((await searchParams) ?? {}) as Record<string, string | string[]>
   const isAllView = computeIsAllView(resolvedSearchParams.view)
+  const searchTerm = readQuery(resolvedSearchParams.q).toLowerCase()
 
-  const [rawCategories, rawTopics] = await Promise.all([
+  const [rawCategories, rawTopics, rawComments] = await Promise.all([
     listForumCategoriesService().catch(() => [] as unknown),
-    listForumTopicsWithCategories(200).catch(() => [] as unknown),
+    listForumTopicsWithCategories(500).catch(() => [] as unknown),
+    adminListForumComments(2000).catch(() => [] as unknown),
   ])
 
-  const fetchedCategories = Array.isArray(rawCategories)
-    ? (rawCategories as ForumCategory[])
-    : Array.isArray((rawCategories as { data?: ForumCategory[] } | undefined)?.data)
-      ? ((rawCategories as { data?: ForumCategory[] }).data as ForumCategory[])
-      : []
+  const categories = Array.isArray(rawCategories) ? (rawCategories as ForumCategoryRecord[]) : []
+  const topics = Array.isArray(rawTopics) ? (rawTopics as ForumTopicRecord[]) : []
+  const comments = Array.isArray(rawComments) ? (rawComments as ForumCommentRecord[]) : []
 
-  const categories: ForumCategory[] =
-    fetchedCategories.length > 0
-      ? fetchedCategories
-        .filter(
-          (category) =>
-            TARGET_CATEGORY_IDS.includes(String(category?.id ?? '')) &&
-            isActiveCategory(category),
-        )
-        .map((category) => ({ ...category }))
-      : (TARGET_CATEGORY_IDS.map((id) => ({
-        id,
-        nome:
-          id === '1'
-            ? 'Habbo'
-            : id === '2'
-              ? 'Wired'
-              : id === '3'
-                ? 'General'
-                : 'Videos',
-        descricao: null,
-        status: null,
-      })) as ForumCategory[])
-
-  const topics = Array.isArray(rawTopics)
-    ? (rawTopics as ForumTopic[])
-    : Array.isArray((rawTopics as { data?: ForumTopic[] } | undefined)?.data)
-      ? ((rawTopics as { data?: ForumTopic[] }).data as ForumTopic[])
-      : []
-
-  const filteredTopics = topics.filter((topic) => {
-    if (!isActiveTopic(topic)) return false
-    const categoryKey = getCategoryKey(topic?.cat_id ?? topic?.categoria)
-    return TARGET_CATEGORY_IDS.includes(categoryKey)
-  })
-
-  const topicsByCategory = new Map<string, ForumTopic[]>()
-  for (const topic of filteredTopics) {
-    const categoryKey = getCategoryKey(topic?.cat_id ?? topic?.categoria)
-    if (!topicsByCategory.has(categoryKey)) {
-      topicsByCategory.set(categoryKey, [])
-    }
-    topicsByCategory.get(categoryKey)!.push(topic)
-  }
-  const allTopicsSorted = sortTopics(filteredTopics)
-  function renderTopicCard(topic: ForumTopic): JSX.Element {
-    const topicId = toStringSafe(topic?.id) || '0'
-    const title = toStringSafe(topic?.titulo) || (topicId ? `Sujet #${topicId}` : 'Sujet')
-    const author = toStringSafe(topic?.autor)
-    const publishedAt = formatDateShortFr(topic?.data)
-    const excerpt = buildExcerptFromHtml(topic?.conteudo ?? '')
-    const previewText = buildPreviewText(excerpt, { maxLength: 140 })
-    const pinned = asBoolean(topic?.fixo)
-    const closed = asBoolean(topic?.fechado)
-    const imageUrl = mediaUrl(toStringSafe(topic?.imagem))
-
-    return (
-      <ContentCard
-        key={topicId}
-        title={title}
-        href={`/forum/topic/${topicId}`}
-        preview={previewText}
-        image={
-          <>
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={imageUrl || FALLBACK_ICON} alt="" className="h-full w-full object-contain" />
-          </>
-        }
-        meta={
-          <>
-            {author ? <span>Par {author}</span> : null}
-            {author && publishedAt ? (
-              <span className="mx-1 h-px w-3 bg-[color:var(--foreground)]/20" />
-            ) : null}
-            {publishedAt ? <span>Publie le {publishedAt}</span> : null}
-            {pinned ? (
-              <span className="rounded-[2px] bg-emerald-400/15 px-2 py-0.5 text-emerald-200">
-                Epingle
-              </span>
-            ) : null}
-            {closed ? (
-              <span className="rounded-[2px] bg-rose-400/15 px-2 py-0.5 text-rose-200">Ferme</span>
-            ) : null}
-          </>
-        }
-      />
-    )
+  const categoryById = new Map<string, ForumCategoryRecord>()
+  for (const category of categories) {
+    categoryById.set(toStringSafe(category.id), category)
   }
 
-  const categorizedSections = categories.map((category) => {
-    const categoryKey = getCategoryKey(category.id)
-    const label =
-      toStringSafe(category?.nome) || (categoryKey ? `Categorie ${categoryKey}` : 'Categorie')
-    const description = toStringSafe(category?.descricao)
-    const categoryTopics = sortTopics(topicsByCategory.get(categoryKey) ?? [])
-    const topTopics = categoryTopics.slice(0, 5)
+  const responsesByTopicId = new Map<number, number>()
+  for (const comment of comments) {
+    if (!isActiveStatus(comment?.status)) continue
+    const topicId = toNumberSafe(comment?.id_forum)
+    if (topicId <= 0) continue
+    responsesByTopicId.set(topicId, (responsesByTopicId.get(topicId) || 0) + 1)
+  }
 
-    return (
-      <article
-        key={categoryKey}
-        className="rounded-[2px] border border-[color:var(--bg-700)]/50 bg-[color:var(--bg-900)]/45 p-5 shadow-[0_20px_60px_-60px_rgba(0,0,0,0.78)] transition hover:border-[color:var(--bg-600)]/60 hover:bg-[color:var(--bg-900)]/55"
-      >
-        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-4">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={FALLBACK_ICON}
-              alt=""
-              className="h-12 w-12 bg-[color:var(--bg-800)]/70 object-contain p-2"
-            />
-            <div>
-              <h2 className="text-xl font-semibold uppercase text-[color:var(--foreground)]">
-                {label}
-              </h2>
-              {description ? (
-                <p className="text-xs text-[color:var(--foreground)]/60">{description}</p>
-              ) : null}
-            </div>
-          </div>
-        </div>
+  const visibleTopics = sortTopics(
+    topics.filter((topic) => {
+      if (!isActiveStatus(topic?.status)) return false
+      const categoryId = toStringSafe(topic?.cat_id)
+      const category = categoryById.get(categoryId)
+      if (category && !isActiveStatus(category?.status)) return false
+      if (!searchTerm) return true
+      const title = stripHtml(toStringSafe(topic?.titulo)).toLowerCase()
+      const content = stripHtml(toStringSafe(topic?.conteudo)).toLowerCase()
+      return title.includes(searchTerm) || content.includes(searchTerm)
+    }),
+  )
 
-        <div className="mt-6 space-y-5">
-          {topTopics.length ? (
-            topTopics.map((topic) => renderTopicCard(topic))
-          ) : (
-            <div className="border border-dashed border-[color:var(--bg-700)]/60 bg-[color:var(--bg-900)]/35 px-4 py-6 text-center text-xs font-semibold uppercase text-[color:var(--foreground)]/55">
-              Aucun sujet publie dans cette categorie pour le moment.
-            </div>
-          )}
-        </div>
-      </article>
-    )
-  })
+  const topicsBySection = new Map<SectionId, ForumTopicRecord[]>()
+  for (const section of SECTION_CONFIG) {
+    topicsBySection.set(section.id, [])
+  }
+
+  for (const topic of visibleTopics) {
+    const categoryId = toStringSafe(topic?.cat_id)
+    const categoryName = toStringSafe(categoryById.get(categoryId)?.nome)
+    const sectionId = resolveSectionId(categoryId, categoryName)
+    topicsBySection.get(sectionId)?.push(topic)
+  }
+
+  const groupedSections = SECTION_CONFIG.map((section) => ({
+    ...section,
+    topics: (topicsBySection.get(section.id) || []).slice(0, 12),
+  }))
+
+  const allTopics = visibleTopics.slice(0, 48)
 
   return (
-    <main className="mx-auto flex w-full max-w-[1898px] flex-col gap-8 px-4 py-10 sm:px-8 lg:px-12">
-      <header className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-lg font-bold uppercase text-[color:var(--foreground)]">
-            Forum communautaire
-          </h1>
-          <p className="text-xs font-semibold uppercase text-[color:var(--foreground)]/60">
-            Choisis une categorie pour parcourir les sujets
-          </p>
-        </div>
-        <div className="flex w-full gap-3 sm:w-auto">
-          <div className="relative flex-1 sm:w-72">
-            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[color:var(--foreground)]/35 material-icons">
+    <main className="mx-auto flex w-full max-w-[1200px] flex-col gap-[50px] px-4 py-10 sm:px-8">
+      <div className="flex w-full justify-end">
+        <form className="flex w-full max-w-[560px] flex-col gap-2 sm:flex-row sm:items-center sm:justify-end sm:gap-[5px]">
+          {isAllView ? <input type="hidden" name="view" value="all" /> : null}
+          <div className="relative w-full sm:max-w-[255px]">
+            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#BEBECE] material-icons text-[16px]">
               search
             </span>
             <input
               type="search"
               name="q"
-              placeholder="Rechercher un sujet"
-              className="h-11 w-full border border-[color:var(--bg-600)]/60 bg-[color:var(--bg-900)]/55 pl-9 pr-3 text-sm font-medium text-[color:var(--foreground)]/85 placeholder:text-[color:var(--foreground)]/30 focus-visible:border-[color:var(--bg-300)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--bg-300)]/25"
-              disabled
+              defaultValue={readQuery(resolvedSearchParams.q)}
+              placeholder="Rechercher un titre"
+              className="h-[50px] w-full rounded-[4px] border border-transparent bg-[rgba(255,255,255,0.1)] pl-9 pr-3 text-[12px] text-[#DDD] placeholder:text-[#BEBECE] focus-visible:border-[#2596FF] focus-visible:outline-none"
             />
           </div>
+
           {isAllView ? (
             <Link
-              href="/forum"
-              className="flex h-11 items-center rounded-[2px] px-5 text-sm font-semibold uppercase bg-[#ffffff1a] text-white transition hover:bg-[#ffffff33]"
+              href={readQuery(resolvedSearchParams.q) ? `/forum?q=${encodeURIComponent(readQuery(resolvedSearchParams.q))}` : '/forum'}
+              className="inline-flex h-[50px] items-center justify-center rounded-[4px] bg-[rgba(255,255,255,0.1)] px-5 text-[11px] font-bold uppercase tracking-[0.04em] text-[#DDD] hover:bg-[rgba(255,255,255,0.16)]"
             >
-              Voir par categorie
+              Voir sections
             </Link>
           ) : (
-            <Link
-              href="/forum?view=all"
-              className="flex h-11 items-center rounded-[2px] px-5 text-sm font-semibold uppercase bg-[#ffffff1a] text-white transition hover:bg-[#ffffff33]"
+            <button
+              type="submit"
+              name="view"
+              value="all"
+              className="h-[50px] rounded-[4px] bg-[rgba(255,255,255,0.1)] px-5 text-[11px] font-bold uppercase tracking-[0.04em] text-[#DDD] hover:bg-[rgba(255,255,255,0.16)]"
             >
-              Toutes les listes
-            </Link>
+              Lister toutes
+            </button>
           )}
-        </div>
-      </header>
+        </form>
+      </div>
 
-      <section className="grid gap-6">
+      <div className="space-y-8">
         {isAllView ? (
-          <article className="rounded-[2px] border border-[color:var(--bg-700)]/50 bg-[color:var(--bg-900)]/45 p-5 shadow-[0_20px_60px_-60px_rgba(0,0,0,0.78)]">
-            <div className="flex items-center gap-3 border-b border-[color:var(--bg-700)]/45 pb-4">
-              <h2 className="text-xl font-semibold uppercase text-[color:var(--foreground)]">Tout</h2>
-              <span className="text-xs font-semibold uppercase text-[color:var(--foreground)]/45">
-                {allTopicsSorted.length} sujet{allTopicsSorted.length > 1 ? 's' : ''}
-              </span>
-            </div>
-            <div className="mt-5 space-y-5">
-              {allTopicsSorted.length ? (
-                allTopicsSorted.map((topic) => renderTopicCard(topic))
-              ) : (
-                <div className="border border-dashed border-[color:var(--bg-700)]/60 bg-[color:var(--bg-900)]/35 px-4 py-6 text-center text-xs font-semibold uppercase text-[color:var(--foreground)]/55">
-                  Aucun sujet disponible pour le moment.
-                </div>
-              )}
-            </div>
-          </article>
+          <SectionBlock
+            label="TOUS LES SUJETS"
+            icon="/img/forum.png"
+            topics={allTopics}
+            responsesByTopicId={responsesByTopicId}
+          />
         ) : (
-          categorizedSections
+          groupedSections.map((section) => (
+            <SectionBlock
+              key={section.id}
+              label={section.label}
+              icon={section.icon}
+              topics={section.topics}
+              responsesByTopicId={responsesByTopicId}
+            />
+          ))
         )}
-
-        {!isAllView && categories.length === 0 ? (
-          <div className="border border-[color:var(--bg-700)]/60 bg-[color:var(--bg-900)]/45 px-6 py-10 text-center text-sm font-semibold uppercase text-[color:var(--foreground)]/50">
-            Aucune categorie disponible pour le moment.
-          </div>
-        ) : null}
-      </section>
+      </div>
     </main>
   )
 }

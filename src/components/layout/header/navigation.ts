@@ -7,15 +7,15 @@ export type NavEntry = {
 }
 
 export const navigation: NavEntry[] = [
-  { label: 'Home', href: '/' },
+  { label: 'Accueil', href: '/' },
   {
     label: 'HabbOne',
     children: [
-      { label: 'Archive de notícias', href: '/news' },
+      { label: 'Archive des actualites', href: '/news' },
       { label: 'Equipe', href: '/team' },
       { label: 'A propos', href: '/about' },
       { label: 'Partenaires', href: '/partenaires' },
-      { label: 'Communauté Discord', href: 'https://discord.gg/s4NpDcgcWe', external: true },
+      { label: 'Communaute Discord', href: 'https://discord.gg/s4NpDcgcWe', external: true },
     ],
   },
   {
@@ -27,9 +27,10 @@ export const navigation: NavEntry[] = [
     ],
   },
   {
-    label: 'EXTRAS',
+    label: 'Centre fan',
     children: [
-      { label: "Habbo Imager", href: '/imager', prefetch: false },
+      { label: 'Poster un sujet', href: '/forum' },
+      { label: 'Habbo Imager', href: '/imager', prefetch: false },
       { label: 'Rechercher utilisateurs', href: '/pseudohabbo', prefetch: false },
       { label: 'Rechercher mobis', href: '/mobis', prefetch: false },
     ],

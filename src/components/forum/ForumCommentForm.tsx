@@ -3,55 +3,52 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { toast } from "sonner";
-import RichEditor from "@/components/editor/RichEditor";
-import { Button } from "@/components/ui/button";
-import { stripHtml } from "@/lib/text-utils";
 
 export default function ForumCommentForm({ topicId }: { topicId: number }) {
   const router = useRouter();
-  const [editorKey, setEditorKey] = useState(0);
-  const [submitting, setSubmitting] = useState(false);
   const [open, setOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [content, setContent] = useState("");
 
   useEffect(() => {
-    const onToggle = () => setOpen((v) => !v)
-    const onOpen = () => setOpen(true)
-    window.addEventListener('toggle-comment-form', onToggle as any)
-    window.addEventListener('open-comment-form', onOpen as any)
-    // open if hash is #post-comment
-    if (typeof window !== 'undefined' && window.location.hash === '#post-comment') setOpen(true)
+    const onToggle = () => setOpen((value) => !value);
+    const onOpen = () => setOpen(true);
+    window.addEventListener("toggle-comment-form", onToggle as any);
+    window.addEventListener("open-comment-form", onOpen as any);
+    if (typeof window !== "undefined" && window.location.hash === "#post-comment") setOpen(true);
     return () => {
-      window.removeEventListener('toggle-comment-form', onToggle as any)
-      window.removeEventListener('open-comment-form', onOpen as any)
-    }
-  }, [])
+      window.removeEventListener("toggle-comment-form", onToggle as any);
+      window.removeEventListener("open-comment-form", onOpen as any);
+    };
+  }, []);
 
   const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    const formData = new FormData(event.currentTarget);
-    const html = String(formData.get("comentario") || "");
-    const plain = stripHtml(html, { replaceNbsp: true });
+    const plain = content.trim();
     if (!plain) {
       toast.error("Commentaire vide");
       return;
     }
+
     setSubmitting(true);
     try {
-      const res = await fetch(`/api/forum/topic/${topicId}/comments`, {
+      const response = await fetch(`/api/forum/topic/${topicId}/comments`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ content: html }),
+        body: JSON.stringify({ content: plain }),
       });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        toast.error(json?.error || "Echec de publication");
+      const payload = await response.json().catch(() => ({} as any));
+      if (!response.ok) {
+        toast.error(payload?.error || "Echec de publication");
         return;
       }
-      toast.success("Commentaire publié");
-      setEditorKey((k) => k + 1);
+
+      toast.success("Commentaire publie");
+      setContent("");
+      setOpen(false);
       router.refresh();
     } catch {
-      toast.error("Erreur réseau");
+      toast.error("Erreur reseau");
     } finally {
       setSubmitting(false);
     }
@@ -59,18 +56,30 @@ export default function ForumCommentForm({ topicId }: { topicId: number }) {
 
   return (
     <form
-      onSubmit={handleSubmit}
       id="post-comment"
-      className={`space-y-4 rounded-md border border-[color:var(--bg-600)]/55 bg-[color:var(--bg-800)]/45 p-5 transition-all ${open ? 'opacity-100 scale-100' : 'opacity-0 -translate-y-1 pointer-events-none h-0 overflow-hidden'}`}
+      onSubmit={handleSubmit}
+      className={`rounded-[4px] border border-[#141433] bg-[#272746] p-4 transition-all ${open ? "block" : "hidden"}`}
     >
-      <div className="text-sm font-semibold text-[color:var(--foreground)]/85">Ajouter un commentaire</div>
-      <div className="rounded-md border border-[color:var(--bg-700)]/60 bg-[color:var(--bg-900)]/50 p-2">
-        <RichEditor key={editorKey} name="comentario" variant="simple" placeholder="Partage ton avis sur ce sujet..." />
-      </div>
-      <div className="flex justify-end">
-        <Button type="submit" disabled={submitting} className="inline-flex h-10 items-center justify-center rounded-sm bg-[#1d4bff] px-5 text-sm font-semibold text-white transition hover:bg-[#335bff] disabled:cursor-not-allowed disabled:opacity-75">
+      <label htmlFor="forum-comment" className="mb-2 block text-[13px] font-semibold uppercase tracking-[0.04em] text-[#DDD]">
+        Votre commentaire
+      </label>
+      <textarea
+        id="forum-comment"
+        name="commentaire"
+        value={content}
+        onChange={(event) => setContent(event.target.value)}
+        rows={5}
+        placeholder="Ecrire votre reponse..."
+        className="w-full resize-y rounded-[4px] border border-[#141433] bg-[#1F1F3E] px-3 py-2 text-[14px] text-white placeholder:text-[#BEBECE] focus:border-[#2596FF] focus:outline-none"
+      />
+      <div className="mt-3 flex justify-end">
+        <button
+          type="submit"
+          disabled={submitting}
+          className="inline-flex h-[38px] items-center justify-center rounded-[4px] bg-[#2596FF] px-4 text-[12px] font-bold uppercase tracking-[0.04em] text-white hover:bg-[#2976E8] disabled:cursor-not-allowed disabled:opacity-70"
+        >
           {submitting ? "Publication..." : "Publier"}
-        </Button>
+        </button>
       </div>
     </form>
   );

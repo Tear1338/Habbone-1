@@ -25,7 +25,7 @@ export default async function NewsDetailPage(props: NewsDetailProps) {
 
   if (!Number.isFinite(newsId) || newsId <= 0) {
     return (
-      <main className="mx-auto max-w-7xl px-4 py-16 text-center text-sm text-[color:var(--foreground)]/55 sm:px-6 lg:px-12 xl:px-16 2xl:px-24">
+      <main className="mx-auto max-w-7xl px-4 py-16 text-center text-sm text-[#BEBECE]/55">
         Article introuvable.
       </main>
     )
@@ -39,7 +39,7 @@ export default async function NewsDetailPage(props: NewsDetailProps) {
 
   if (!newsItem) {
     return (
-      <main className="mx-auto max-w-7xl px-4 py-16 text-center text-sm text-[color:var(--foreground)]/55 sm:px-6 lg:px-12 xl:px-16 2xl:px-24">
+      <main className="mx-auto max-w-7xl px-4 py-16 text-center text-sm text-[#BEBECE]/55">
         Article introuvable.
       </main>
     )
@@ -57,10 +57,13 @@ export default async function NewsDetailPage(props: NewsDetailProps) {
       head_direction: 2,
       img_format: "png",
       gesture: "sml",
-      headonly: 1,
+      headonly: 0,
       size: "m",
     })
     : "/img/avatar_empty.png"
+
+  // Category badge text
+  const categoryLabel = newsItem.id % 3 === 0 ? "NOUVEAUTÉ" : newsItem.id % 3 === 1 ? "HABBONE" : "RARES"
 
   const commentLabel = `${comments.length} commentaire${comments.length > 1 ? "s" : ""}`
   const actionEl = isAuthenticated ? (
@@ -68,79 +71,119 @@ export default async function NewsDetailPage(props: NewsDetailProps) {
   ) : (
     <a
       href={`/login?from=/news/${newsId}`}
-      className="inline-flex h-9 items-center justify-center rounded-md bg-[color:var(--blue-500)] px-4 text-xs font-bold uppercase tracking-wide text-white hover:bg-[color:var(--blue-700)]"
+      className="inline-flex items-center justify-center rounded-[4px] bg-[#2596FF] px-5 py-3.5 text-sm font-bold uppercase tracking-wider text-white hover:bg-[#2976E8] transition"
     >
       Se connecter
     </a>
   )
 
   return (
-    <main className="mx-auto w-full space-y-20 py-10">
-      <PageSection contentClassName="space-y-6">
-        <section className="w-full rounded-md border border-[color:var(--bg-700)]/65 bg-[color:var(--bg-800)]/45 shadow-[0_18px_55px_-45px_rgba(0,0,0,0.65)]">
-          <header className="flex items-center justify-between border-b border-[color:var(--bg-700)]/70 bg-[#1F1F3E] px-5 py-3.5">
-            <div className="flex items-center gap-3">
-              <img src="/img/news.png" alt="" className="h-11 w-8 sm:h-11 sm:w-8 image-pixelated" />
-              <span className="text-lg font-bold uppercase tracking-[0.12em] text-[color:var(--foreground)]">{title}</span>
-            </div>
-          </header>
-          <div className="px-7 sm:px-8 lg:px-10 py-7">
-            {imageUrl ? (
-              <div className="relative mb-4 w-full overflow-hidden rounded-md border border-[color:var(--bg-700)]/60 bg-[color:var(--bg-900)]/40 h-56 sm:h-72 lg:h-[420px]">
-                <img src={imageUrl} alt="" className="h-full w-full object-contain" />
-              </div>
-            ) : null}
-
-            <article
-              className="prose prose-invert max-w-none leading-relaxed prose-p:leading-relaxed text-left prose-sm sm:prose-base lg:prose-lg"
-              dangerouslySetInnerHTML={{ __html: newsItem.noticia || "" }}
-            />
+    <main className="mx-auto w-full max-w-[1200px] space-y-16 px-4 py-10">
+      {/* ─── Article Card ─── */}
+      <section className="w-full rounded-[8px] border border-[#141433] bg-[#1F1F3E] py-3">
+        {/* Title header bar */}
+        <div className="mx-3 rounded-[8px] bg-[#141433] p-4">
+          <div className="flex items-center gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/img/news.png" alt="" className="h-[45px] w-[41px] image-pixelated" />
+            <span className="text-lg font-bold uppercase tracking-[0.12em] text-[#DDD]" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>
+              {title}
+            </span>
           </div>
-          <footer className="flex items-center justify-between gap-2 border-t border-[color:var(--bg-700)]/70 bg-[color:var(--bg-800)]/55 px-5 py-3">
-            <div className="flex items-center gap-2 text-sm text-[color:var(--foreground)]/75">
-              <img src={avatarUrl} alt="" className="h-10 w-10 rounded-sm border border-[color:var(--bg-700)]/65 bg-[color:var(--bg-900)]/55" />
-              <span>Par {author || "Anonyme"}</span>
-            </div>
-            {publishedAt ? (
-              <span className="text-xs font-semibold uppercase tracking-[0.12em] text-[color:var(--foreground)]/55">
-                Publie le {publishedAt}
-              </span>
-            ) : null}
-          </footer>
-        </section>
-      </PageSection>
+        </div>
 
-      <PageSection
-        title={<div className="flex items-center gap-3"><img src="/img/public.png" alt="" className="h-12 w-auto image-pixelated" /><span>Commentaires</span></div>}
-        titleClassName="text-2xl sm:text-3xl"
-        description={commentLabel}
-        actions={actionEl}
-        className="px-6 sm:px-8 lg:px-10 py-8 sm:py-10"
-        contentClassName="space-y-6"
-      >
-        {isAuthenticated ? (<NewsCommentForm newsId={newsId} />) : null}
+        {/* Article body */}
+        <div className="flex flex-col items-center gap-4 px-6 py-8">
+          {/* Centered image 150×150 */}
+          {imageUrl ? (
+            <div className="flex items-center justify-center">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={imageUrl} alt="" className="h-[150px] w-[150px] object-cover rounded" />
+            </div>
+          ) : null}
+
+          {/* Article HTML content */}
+          <article
+            className="article-content w-full max-w-[1152px] text-base font-normal leading-relaxed text-white"
+            dangerouslySetInnerHTML={{ __html: newsItem.noticia || "" }}
+          />
+        </div>
+
+        {/* Author footer */}
+        <div className="border-t border-[#141433] px-4 pb-1 pt-4">
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={avatarUrl} alt="" className="h-[50px] w-[50px] object-contain image-pixelated" />
+              <div className="flex items-center gap-3 text-base">
+                <span className="font-bold text-[#2596FF]">{author || "Anonyme"}</span>
+                {publishedAt ? <span className="font-normal text-[#DDD]">{publishedAt}</span> : null}
+              </div>
+            </div>
+            <div className="rounded-[4px] bg-[rgba(255,255,255,0.05)] px-2 py-1.5">
+              <span className="text-sm font-normal uppercase text-white">{categoryLabel}</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── Comments Section ─── */}
+      <section className="w-full space-y-8">
+        {/* Comments header bar */}
+        <div className="flex items-center justify-between rounded-[4px] border border-[rgba(0,0,0,0.6)] bg-[#1F1F3E] px-5 py-4 shadow-[0_0_0_0_rgba(255,255,255,0.05)]">
+          <div className="flex items-center gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/img/public.png" alt="" className="h-12 w-auto image-pixelated" />
+            <span className="text-lg font-bold uppercase tracking-[0.12em] text-[#DDD]" style={{ textShadow: '0 1px 2px rgba(0,0,0,0.5)' }}>
+              Commentaires
+            </span>
+          </div>
+          {isAuthenticated ? (
+            <button
+              type="button"
+              className="inline-flex items-center justify-center rounded-[4px] bg-[#2596FF] px-5 py-3.5 text-sm font-bold uppercase tracking-wider text-white hover:bg-[#2976E8] transition"
+              onClick={undefined}
+            >
+              Écrire commentaire
+            </button>
+          ) : (
+            <a
+              href={`/login?from=/news/${newsId}`}
+              className="inline-flex items-center justify-center rounded-[4px] bg-[#2596FF] px-5 py-3.5 text-sm font-bold uppercase tracking-wider text-white hover:bg-[#2976E8] transition"
+            >
+              Se connecter
+            </a>
+          )}
+        </div>
+
+        {/* Comment form */}
+        {isAuthenticated ? <NewsCommentForm newsId={newsId} /> : null}
+
+        {/* Comment list */}
         {comments.length === 0 ? (
-          <p className="border border-dashed border-[color:var(--bg-700)]/60 bg-[color:var(--bg-900)]/35 px-5 py-6 text-center text-sm text-[color:var(--foreground)]/60">
+          <p className="rounded-[4px] border border-dashed border-[#141433] bg-[#272746] px-5 py-6 text-center text-sm text-[#BEBECE]/60">
             Aucun commentaire pour le moment.
           </p>
         ) : (
-          comments.map((comment: NewsCommentRecord) => {
-            const commentAuthor = stripHtml(comment.autor || "Anonyme")
-            const commentDate = formatDateTimeFromAny(comment.data)
-            return (
-              <CommentBubble
-                key={comment.id}
-                author={commentAuthor}
-                date={commentDate}
-                html={comment.comentario || ""}
-                avatarNick={commentAuthor}
-                canInteract={false}
-                showActions={false}
-              />
-            )
-          })
+          <div className="space-y-4">
+            {comments.map((comment: NewsCommentRecord) => {
+              const commentAuthor = stripHtml(comment.autor || "Anonyme")
+              const commentDate = formatDateTimeFromAny(comment.data)
+              return (
+                <CommentBubble
+                  key={comment.id}
+                  author={commentAuthor}
+                  date={commentDate}
+                  html={comment.comentario || ""}
+                  avatarNick={commentAuthor}
+                  canInteract={isAuthenticated}
+                  showActions={true}
+                />
+              )
+            })}
+          </div>
         )}
-      </PageSection>
+      </section>
     </main>
   )
 }
