@@ -43,14 +43,16 @@ async function writeThemeSettingsToFile(patch: Partial<SiteThemeSettings>): Prom
 
 type ThemeJsonFileMeta = { id: string } | null;
 
-async function getLatestThemeJsonFile(): Promise<ThemeJsonFileMeta> {
+async function getLatestThemeJsonFileFromQuery(options?: { withFolderFilter?: boolean }): Promise<ThemeJsonFileMeta> {
   const url = new URL(`${directusUrl}/files`);
   url.searchParams.set('fields', 'id');
   url.searchParams.set('filter[title][_eq]', THEME_SETTINGS_TITLE);
-  if (THEME_FILES_FOLDER_ID) {
+  if (options?.withFolderFilter !== false && THEME_FILES_FOLDER_ID) {
     url.searchParams.set('filter[folder][_eq]', THEME_FILES_FOLDER_ID);
   }
-  url.searchParams.set('sort', '-date_created');
+  // "date_created" is blocked by current Directus role permissions in production.
+  // "uploaded_on" is accessible and matches file creation chronology.
+  url.searchParams.set('sort', '-uploaded_on');
   url.searchParams.set('limit', '1');
 
   const response = await fetch(url, {
@@ -67,6 +69,13 @@ async function getLatestThemeJsonFile(): Promise<ThemeJsonFileMeta> {
   const row = Array.isArray(json?.data) ? json?.data?.[0] : null;
   const id = row?.id;
   return id ? { id: String(id) } : null;
+}
+
+async function getLatestThemeJsonFile(): Promise<ThemeJsonFileMeta> {
+  const withFolder = await getLatestThemeJsonFileFromQuery({ withFolderFilter: true });
+  if (withFolder?.id) return withFolder;
+  // Fallback without folder filter because some uploads may not persist folder metadata.
+  return getLatestThemeJsonFileFromQuery({ withFolderFilter: false });
 }
 
 async function readThemeSettingsFromDirectusFile(): Promise<SiteThemeSettings> {
