@@ -9,6 +9,7 @@ const THEME_DATA_DIR = path.join(process.cwd(), 'public', 'data');
 const THEME_DATA_FILE = path.join(THEME_DATA_DIR, 'theme-settings.json');
 const THEME_UPLOAD_DIR = path.join(process.cwd(), 'public', 'uploads', 'theme');
 const THEME_SETTINGS_FILENAME = (process.env.THEME_SETTINGS_FILENAME || 'theme-settings.json').trim() || 'theme-settings.json';
+const THEME_SETTINGS_TITLE = (process.env.THEME_SETTINGS_TITLE || 'Theme Settings').trim() || 'Theme Settings';
 const THEME_FILES_FOLDER_ID = (process.env.THEME_FILES_FOLDER_ID || process.env.DIRECTUS_FILES_FOLDER || '').trim() || null;
 
 type ThemeStorageMode = 'file' | 'directus-file';
@@ -45,7 +46,7 @@ type ThemeJsonFileMeta = { id: string } | null;
 async function getLatestThemeJsonFile(): Promise<ThemeJsonFileMeta> {
   const url = new URL(`${directusUrl}/files`);
   url.searchParams.set('fields', 'id');
-  url.searchParams.set('filter[filename_download][_eq]', THEME_SETTINGS_FILENAME);
+  url.searchParams.set('filter[title][_eq]', THEME_SETTINGS_TITLE);
   if (THEME_FILES_FOLDER_ID) {
     url.searchParams.set('filter[folder][_eq]', THEME_FILES_FOLDER_ID);
   }
@@ -58,7 +59,10 @@ async function getLatestThemeJsonFile(): Promise<ThemeJsonFileMeta> {
     cache: 'no-store',
   }).catch(() => null);
 
-  if (!response?.ok) return null;
+  if (!response?.ok) {
+    try { console.error(`[theme] directus files list failed (${response?.status || 'network'})`); } catch {}
+    return null;
+  }
   const json = (await response.json().catch(() => null)) as Record<string, any> | null;
   const row = Array.isArray(json?.data) ? json?.data?.[0] : null;
   const id = row?.id;
@@ -76,11 +80,19 @@ async function readThemeSettingsFromDirectusFile(): Promise<SiteThemeSettings> {
       cache: 'no-store',
     }).catch(() => null);
 
-    if (!response?.ok) return DEFAULT_THEME_SETTINGS;
+    if (!response?.ok) {
+      try { console.error(`[theme] directus asset read failed (${response?.status || 'network'})`); } catch {}
+      return DEFAULT_THEME_SETTINGS;
+    }
     const raw = await response.text().catch(() => '');
     if (!raw) return DEFAULT_THEME_SETTINGS;
     return normalizeThemeSettings(JSON.parse(raw));
-  } catch {
+  } catch (error: unknown) {
+    try {
+      console.error(
+        `[theme] directus settings parse/read failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    } catch {}
     return DEFAULT_THEME_SETTINGS;
   }
 }
@@ -94,7 +106,7 @@ async function writeThemeSettingsToDirectusFile(patch: Partial<SiteThemeSettings
   const payload = `${JSON.stringify(next, null, 2)}\n`;
   const formData = new FormData();
   formData.set('file', new Blob([payload], { type: 'application/json' }), THEME_SETTINGS_FILENAME);
-  formData.set('title', 'Theme Settings');
+  formData.set('title', THEME_SETTINGS_TITLE);
   if (THEME_FILES_FOLDER_ID) formData.set('folder', THEME_FILES_FOLDER_ID);
 
   const response = await fetch(`${directusUrl}/files`, {
