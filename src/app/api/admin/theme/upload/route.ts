@@ -3,7 +3,9 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { NextResponse } from 'next/server';
 import { assertAdmin } from '@/server/authz';
-import { themeUploadDir, writeThemeSettings } from '@/server/theme-settings-store';
+import { directusUrl } from '@/server/directus/client';
+import { uploadFileToDirectus } from '@/server/directus/stories';
+import { isThemeStoredInDirectus, themeUploadDir, writeThemeSettings } from '@/server/theme-settings-store';
 
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
 const ALLOWED_MIME_TYPES = new Set([
@@ -29,6 +31,25 @@ function extensionFromFile(file: File): string {
   return 'png';
 }
 
+async function uploadToLocalPublicDir(file: File, target: string): Promise<string> {
+  const ext = extensionFromFile(file);
+  const fileName = `${target}-${Date.now()}-${randomUUID().slice(0, 8)}.${ext}`;
+  const bytes = Buffer.from(await file.arrayBuffer());
+  await mkdir(themeUploadDir, { recursive: true });
+  await writeFile(path.join(themeUploadDir, fileName), bytes);
+  return `/uploads/theme/${fileName}`;
+}
+
+async function uploadToDirectusAssets(file: File): Promise<string> {
+  const fallbackExt = extensionFromFile(file);
+  const sourceName = (file.name || '').trim();
+  const filename = sourceName || `theme-${Date.now()}.${fallbackExt}`;
+  const uploaded = await uploadFileToDirectus(file, filename, file.type || 'application/octet-stream');
+  const id = String(uploaded?.id || '').trim();
+  if (!id) throw new Error('DIRECTUS_UPLOAD_NO_ID');
+  return `${directusUrl}/assets/${encodeURIComponent(id)}`;
+}
+
 export async function POST(req: Request) {
   try {
     await assertAdmin();
@@ -52,7 +73,6 @@ export async function POST(req: Request) {
   if (!(file instanceof File)) {
     return NextResponse.json({ error: 'FILE_REQUIRED', code: 'FILE_REQUIRED' }, { status: 400 });
   }
-
   if (file.size <= 0 || file.size > MAX_FILE_SIZE) {
     return NextResponse.json({ error: 'INVALID_FILE_SIZE', code: 'INVALID_FILE_SIZE' }, { status: 400 });
   }
@@ -62,23 +82,28 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'UNSUPPORTED_FILE_TYPE', code: 'UNSUPPORTED_FILE_TYPE' }, { status: 400 });
   }
 
-  const ext = extensionFromFile(file);
-  const fileName = `${target}-${Date.now()}-${randomUUID().slice(0, 8)}.${ext}`;
-  const bytes = Buffer.from(await file.arrayBuffer());
-  await mkdir(themeUploadDir, { recursive: true });
-  await writeFile(path.join(themeUploadDir, fileName), bytes);
+  try {
+    const uploadedUrl = isThemeStoredInDirectus()
+      ? await uploadToDirectusAssets(file)
+      : await uploadToLocalPublicDir(file, target);
 
-  const url = `/uploads/theme/${fileName}`;
-  const settings = await writeThemeSettings(
-    target === 'logo'
-      ? { headerLogoUrl: url }
-      : { headerBackgroundImageUrl: url },
-  );
+    const settings = await writeThemeSettings(
+      target === 'logo'
+        ? { headerLogoUrl: uploadedUrl }
+        : { headerBackgroundImageUrl: uploadedUrl },
+    );
 
-  return NextResponse.json({
-    data: {
-      url,
-      settings,
-    },
-  });
+    return NextResponse.json({
+      data: {
+        url: uploadedUrl,
+        settings,
+      },
+    });
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error?.message || 'THEME_UPLOAD_FAILED', code: 'THEME_UPLOAD_FAILED' },
+      { status: 500 },
+    );
+  }
 }
+

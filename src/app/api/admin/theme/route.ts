@@ -22,15 +22,22 @@ export async function GET() {
     );
   }
 
-  const data = await readThemeSettings();
-  return NextResponse.json(
-    { data },
-    {
-      headers: {
-        'Cache-Control': 'no-store',
+  try {
+    const data = await readThemeSettings();
+    return NextResponse.json(
+      { data },
+      {
+        headers: {
+          'Cache-Control': 'no-store',
+        },
       },
-    },
-  );
+    );
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error?.message || 'THEME_READ_FAILED', code: 'THEME_READ_FAILED' },
+      { status: 500 },
+    );
+  }
 }
 
 export async function POST(req: Request) {
@@ -48,6 +55,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: 'INVALID_BODY', code: 'INVALID_BODY' }, { status: 400 });
   }
 
-  const data = await writeThemeSettings(parsed.data);
-  return NextResponse.json({ data });
+  try {
+    const data = await writeThemeSettings(parsed.data);
+    return NextResponse.json({ data });
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error?.message || 'THEME_WRITE_FAILED', code: 'THEME_WRITE_FAILED' },
+      { status: 500 },
+    );
+  }
 }

@@ -45,7 +45,7 @@ export default function AdminThemePanel() {
       const response = await fetch("/api/admin/theme", { cache: "no-store" });
       const json = await response.json().catch(() => ({}));
       if (!response.ok) {
-        toast.error("Impossible de charger le theme");
+        toast.error(String(json?.error || "Impossible de charger le theme"));
         return;
       }
       setSettings(normalizeThemeSettings(json?.data));
@@ -67,7 +67,7 @@ export default function AdminThemePanel() {
       });
       const json = await response.json().catch(() => ({}));
       if (!response.ok) {
-        toast.error("Impossible d'enregistrer le theme");
+        toast.error(String(json?.error || "Impossible d'enregistrer le theme"));
         return;
       }
       const normalized = normalizeThemeSettings(json?.data ?? next);
@@ -98,7 +98,7 @@ export default function AdminThemePanel() {
       });
       const json = await response.json().catch(() => ({}));
       if (!response.ok) {
-        toast.error("Upload impossible");
+        toast.error(String(json?.error || "Upload impossible"));
         return;
       }
       const normalized = normalizeThemeSettings(json?.data?.settings ?? settings);

@@ -2,12 +2,25 @@ import 'server-only';
 
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { directusUrl, serviceToken } from '@/server/directus/client';
 import { DEFAULT_THEME_SETTINGS, normalizeThemeSettings, type SiteThemeSettings } from '@/lib/theme-settings';
 
 const THEME_DATA_DIR = path.join(process.cwd(), 'public', 'data');
 const THEME_DATA_FILE = path.join(THEME_DATA_DIR, 'theme-settings.json');
+const THEME_UPLOAD_DIR = path.join(process.cwd(), 'public', 'uploads', 'theme');
+const THEME_SETTINGS_FILENAME = (process.env.THEME_SETTINGS_FILENAME || 'theme-settings.json').trim() || 'theme-settings.json';
+const THEME_FILES_FOLDER_ID = (process.env.THEME_FILES_FOLDER_ID || process.env.DIRECTUS_FILES_FOLDER || '').trim() || null;
 
-export async function readThemeSettings(): Promise<SiteThemeSettings> {
+type ThemeStorageMode = 'file' | 'directus-file';
+
+function getThemeStorageMode(): ThemeStorageMode {
+  const raw = (process.env.THEME_STORAGE || '').trim().toLowerCase();
+  if (raw === 'file' || raw === 'filesystem' || raw === 'local') return 'file';
+  if (raw === 'directus' || raw === 'directus-file') return 'directus-file';
+  return process.env.VERCEL ? 'directus-file' : 'file';
+}
+
+async function readThemeSettingsFromFile(): Promise<SiteThemeSettings> {
   try {
     const raw = await readFile(THEME_DATA_FILE, 'utf-8');
     return normalizeThemeSettings(JSON.parse(raw));
@@ -16,8 +29,8 @@ export async function readThemeSettings(): Promise<SiteThemeSettings> {
   }
 }
 
-export async function writeThemeSettings(patch: Partial<SiteThemeSettings>): Promise<SiteThemeSettings> {
-  const current = await readThemeSettings();
+async function writeThemeSettingsToFile(patch: Partial<SiteThemeSettings>): Promise<SiteThemeSettings> {
+  const current = await readThemeSettingsFromFile();
   const next = normalizeThemeSettings({
     ...current,
     ...patch,
@@ -27,5 +40,94 @@ export async function writeThemeSettings(patch: Partial<SiteThemeSettings>): Pro
   return next;
 }
 
-export const themeUploadDir = path.join(process.cwd(), 'public', 'uploads', 'theme');
+type ThemeJsonFileMeta = { id: string } | null;
 
+async function getLatestThemeJsonFile(): Promise<ThemeJsonFileMeta> {
+  const url = new URL(`${directusUrl}/files`);
+  url.searchParams.set('fields', 'id');
+  url.searchParams.set('filter[filename_download][_eq]', THEME_SETTINGS_FILENAME);
+  if (THEME_FILES_FOLDER_ID) {
+    url.searchParams.set('filter[folder][_eq]', THEME_FILES_FOLDER_ID);
+  }
+  url.searchParams.set('sort', '-date_created');
+  url.searchParams.set('limit', '1');
+
+  const response = await fetch(url, {
+    method: 'GET',
+    headers: { Authorization: `Bearer ${serviceToken}` },
+    cache: 'no-store',
+  }).catch(() => null);
+
+  if (!response?.ok) return null;
+  const json = (await response.json().catch(() => null)) as Record<string, any> | null;
+  const row = Array.isArray(json?.data) ? json?.data?.[0] : null;
+  const id = row?.id;
+  return id ? { id: String(id) } : null;
+}
+
+async function readThemeSettingsFromDirectusFile(): Promise<SiteThemeSettings> {
+  try {
+    const latest = await getLatestThemeJsonFile();
+    if (!latest?.id) return DEFAULT_THEME_SETTINGS;
+
+    const response = await fetch(`${directusUrl}/assets/${encodeURIComponent(latest.id)}`, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${serviceToken}` },
+      cache: 'no-store',
+    }).catch(() => null);
+
+    if (!response?.ok) return DEFAULT_THEME_SETTINGS;
+    const raw = await response.text().catch(() => '');
+    if (!raw) return DEFAULT_THEME_SETTINGS;
+    return normalizeThemeSettings(JSON.parse(raw));
+  } catch {
+    return DEFAULT_THEME_SETTINGS;
+  }
+}
+
+async function writeThemeSettingsToDirectusFile(patch: Partial<SiteThemeSettings>): Promise<SiteThemeSettings> {
+  const current = await readThemeSettingsFromDirectusFile();
+  const next = normalizeThemeSettings({
+    ...current,
+    ...patch,
+  });
+  const payload = `${JSON.stringify(next, null, 2)}\n`;
+  const formData = new FormData();
+  formData.set('file', new Blob([payload], { type: 'application/json' }), THEME_SETTINGS_FILENAME);
+  formData.set('title', 'Theme Settings');
+  if (THEME_FILES_FOLDER_ID) formData.set('folder', THEME_FILES_FOLDER_ID);
+
+  const response = await fetch(`${directusUrl}/files`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${serviceToken}` },
+    body: formData,
+    cache: 'no-store',
+  }).catch((error: unknown) => {
+    throw new Error(`THEME_DIRECTUS_UPLOAD_NETWORK_FAILED: ${error instanceof Error ? error.message : String(error)}`);
+  });
+
+  if (!response.ok) {
+    const body = await response.text().catch(() => '');
+    throw new Error(`THEME_DIRECTUS_UPLOAD_FAILED: ${response.status} ${body}`);
+  }
+
+  return next;
+}
+
+export async function readThemeSettings(): Promise<SiteThemeSettings> {
+  const storage = getThemeStorageMode();
+  if (storage === 'directus-file') return readThemeSettingsFromDirectusFile();
+  return readThemeSettingsFromFile();
+}
+
+export async function writeThemeSettings(patch: Partial<SiteThemeSettings>): Promise<SiteThemeSettings> {
+  const storage = getThemeStorageMode();
+  if (storage === 'directus-file') return writeThemeSettingsToDirectusFile(patch);
+  return writeThemeSettingsToFile(patch);
+}
+
+export function isThemeStoredInDirectus(): boolean {
+  return getThemeStorageMode() === 'directus-file';
+}
+
+export const themeUploadDir = THEME_UPLOAD_DIR;
