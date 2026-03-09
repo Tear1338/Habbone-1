@@ -121,8 +121,7 @@ export default function Footer() {
           <section className="w-full">
             <div className="font-bold uppercase tracking-wide text-[var(--text-500)] mb-4">Développeurs</div>
             <div className="flex flex-wrap items-center justify-center gap-4">
-              <span className="inline-flex items-center rounded-lg border border-white/10 bg-white/5 px-4 py-2.5">Kael Felipe</span>
-              <span className="inline-flex items-center rounded-lg border border-white/10 bg-white/5 px-4 py-2.5">Wesley Snap</span>
+              <span className="inline-flex items-center rounded-lg border border-white/10 bg-white/5 px-4 py-2.5"><a href="https://www.antoinedewas.com" target="_blank" rel="noreferrer" className="text-cyan-600 hover:text-cyan-400">Antoine Dewas</a></span>
             </div>
           </section>
 
