@@ -60,8 +60,8 @@ export default function Footer() {
               <label className="font-bold text-[var(--text-lg)] leading-[22px] flex items-center text-[var(--text-100)]">Développeurs</label>
             </div>
             <div className="menu flex flex-col space-y-2">
-              <span className="font-bold text-[var(--text-sm)] leading-[17px] text-[var(--text-100)] text-left">Kael Felipe</span>
-              <span className="font-bold text-[var(--text-sm)] leading-[17px] text-[var(--text-100)] text-left">Wesley Snap</span>
+              <span className="font-bold text-[var(--text-sm)] leading-[17px] text-[var(--text-100)] text-left text-cyan-600"><a href="https://www.antoinedewas.com">Antoine Dewas</a></span>
+            
             </div>
           </div>
           {/* Logo tile */}
