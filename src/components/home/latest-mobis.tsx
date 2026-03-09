@@ -9,7 +9,9 @@ type Badge = {
 }
 
 const BADGE_API = 'https://www.habboassets.com/api/v1/badges?limit=240'
-const PAGE_SIZE = 36
+const GRID_COLS = 6
+const GRID_ROWS = 6
+const PAGE_SIZE = GRID_COLS * GRID_ROWS
 
 export default function LatestMobis() {
   const [items, setItems] = useState<Badge[]>([])
@@ -43,6 +45,14 @@ export default function LatestMobis() {
     const start = clampedPage * PAGE_SIZE
     return items.slice(start, start + PAGE_SIZE)
   }, [items, clampedPage])
+
+  const visibleSlots = useMemo(() => {
+    if (visibleItems.length >= PAGE_SIZE) return visibleItems
+    return [
+      ...visibleItems,
+      ...Array.from({ length: PAGE_SIZE - visibleItems.length }, () => null as Badge | null),
+    ]
+  }, [visibleItems])
 
   const previousPage = () => setPage((current) => Math.max(0, current - 1))
   const nextPage = () => setPage((current) => Math.min(pageCount - 1, current + 1))
@@ -89,22 +99,28 @@ export default function LatestMobis() {
               Aucun mobi disponible.
             </div>
           ) : (
-            <div className="grid grid-cols-5 gap-[10px] sm:grid-cols-7 lg:grid-cols-9">
-              {visibleItems.map((badge) => (
+            <div className="grid grid-cols-6 gap-[10px]">
+              {visibleSlots.map((badge, index) => (
                 <div
-                  key={`${badge.code}-${badge.image}`}
-                  title={badge.name}
-                  className="group flex h-[50px] w-[50px] items-center justify-center rounded-[4px] border border-black/20 bg-[#1F1F3E] shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] transition hover:bg-[#303060]"
+                  key={badge ? `${badge.code}-${badge.image}` : `empty-${index}`}
+                  title={badge?.name || ''}
+                  className={`flex aspect-square w-full min-h-[64px] items-center justify-center rounded-[4px] border border-black/20 bg-[#1F1F3E] shadow-[inset_0_1px_0_rgba(255,255,255,0.1)] ${
+                    badge ? 'group transition hover:bg-[#303060]' : 'opacity-35'
+                  }`}
                 >
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={badge.image}
-                    alt={badge.name}
-                    className="h-[24px] w-[24px] image-pixelated object-contain opacity-80 transition group-hover:scale-110 group-hover:opacity-100"
-                    onError={(event) => {
-                      ;(event.target as HTMLImageElement).style.display = 'none'
-                    }}
-                  />
+                  {badge ? (
+                    <>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img
+                        src={badge.image}
+                        alt={badge.name}
+                        className="h-[34px] w-[34px] image-pixelated object-contain opacity-80 transition group-hover:scale-110 group-hover:opacity-100"
+                        onError={(event) => {
+                          ;(event.target as HTMLImageElement).style.display = 'none'
+                        }}
+                      />
+                    </>
+                  ) : null}
                 </div>
               ))}
             </div>
