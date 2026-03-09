@@ -50,8 +50,6 @@ export default function Footer() {
             <div className="menu flex flex-col space-y-2">
               <Link href="/forum" className="font-bold text-[var(--text-sm)] leading-[17px] text-[var(--text-100)] text-left hover:text-blue-300 transition-all duration-200 ease-out hover:pl-2">Poster un sujet</Link>
               <Link href="/imager" prefetch={false} className="font-bold text-[var(--text-sm)] leading-[17px] text-[var(--text-100)] text-left hover:text-blue-300 transition-all duration-200 ease-out hover:pl-2">Habbo Imager</Link>
-              <Link href="/pseudohabbo" prefetch={false} className="font-bold text-[var(--text-sm)] leading-[17px] text-[var(--text-100)] text-left hover:text-blue-300 transition-all duration-200 ease-out hover:pl-2">Rechercher utilisateurs</Link>
-              <Link href="/mobis" prefetch={false} className="font-bold text-[var(--text-sm)] leading-[17px] text-[var(--text-100)] text-left hover:text-blue-300 transition-all duration-200 ease-out hover:pl-2">Rechercher mobis</Link>
             </div>
           </div>
           {/* Développeurs */}

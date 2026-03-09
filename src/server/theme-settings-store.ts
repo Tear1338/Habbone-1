@@ -1,0 +1,31 @@
+import 'server-only';
+
+import { mkdir, readFile, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import { DEFAULT_THEME_SETTINGS, normalizeThemeSettings, type SiteThemeSettings } from '@/lib/theme-settings';
+
+const THEME_DATA_DIR = path.join(process.cwd(), 'public', 'data');
+const THEME_DATA_FILE = path.join(THEME_DATA_DIR, 'theme-settings.json');
+
+export async function readThemeSettings(): Promise<SiteThemeSettings> {
+  try {
+    const raw = await readFile(THEME_DATA_FILE, 'utf-8');
+    return normalizeThemeSettings(JSON.parse(raw));
+  } catch {
+    return DEFAULT_THEME_SETTINGS;
+  }
+}
+
+export async function writeThemeSettings(patch: Partial<SiteThemeSettings>): Promise<SiteThemeSettings> {
+  const current = await readThemeSettings();
+  const next = normalizeThemeSettings({
+    ...current,
+    ...patch,
+  });
+  await mkdir(THEME_DATA_DIR, { recursive: true });
+  await writeFile(THEME_DATA_FILE, `${JSON.stringify(next, null, 2)}\n`, 'utf-8');
+  return next;
+}
+
+export const themeUploadDir = path.join(process.cwd(), 'public', 'uploads', 'theme');
+
