@@ -2,6 +2,20 @@ import 'server-only';
 
 import { directusService, rItems, rItem, cItem, uItem, dItem } from './client';
 import type { NewsRecord, NewsCommentRecord } from './types';
+import { stripHtml } from '@/lib/text-utils';
+
+const NEWS_BADGE_IMAGE_RE =
+  /(?:https?:)?\/\/[^"'\s>]*\/c_images\/([a-zA-Z0-9_-]+)\/([a-zA-Z0-9_-]{2,})\.(?:gif|png)\b/gi;
+
+export type NewsBadgeItem = {
+  newsId: number;
+  title: string;
+  badgeCode: string;
+  badgeAlbum: string;
+  badgeImageUrl: string;
+  articleUrl: string;
+  publishedAt: string | null;
+};
 
 export async function adminListNews(limit = 500): Promise<NewsRecord[]> {
   return directusService.request(
@@ -148,6 +162,66 @@ export function getPublicNewsComments(newsId: number): Promise<NewsCommentRecord
       limit: 200,
     } as any),
   ) as Promise<NewsCommentRecord[]>;
+}
+
+export async function listPublicNewsBadges(limitNews = 160, limitBadges = 220): Promise<NewsBadgeItem[]> {
+  const rows = await directusService
+    .request(
+      rItems('noticias', {
+        fields: ['id', 'titulo', 'noticia', 'data'],
+        sort: ['-data'],
+        limit: limitNews,
+      } as any),
+    )
+    .catch(() => [] as NewsRecord[]);
+
+  if (!Array.isArray(rows) || rows.length === 0) return [];
+
+  const out: NewsBadgeItem[] = [];
+
+  for (const row of rows as NewsRecord[]) {
+    const newsId = Number((row as any)?.id ?? 0);
+    if (!Number.isFinite(newsId) || newsId <= 0) continue;
+
+    const html = String((row as any)?.noticia ?? '');
+    if (!html) continue;
+    if (!html.includes('/c_images/')) continue;
+
+    const title = stripHtml(String((row as any)?.titulo ?? '')).trim() || `Article #${newsId}`;
+    const publishedAt =
+      typeof (row as any)?.data === 'string' || (row as any)?.data === null
+        ? ((row as any)?.data as string | null)
+        : null;
+
+    const seenForNews = new Set<string>();
+    NEWS_BADGE_IMAGE_RE.lastIndex = 0;
+
+    let match: RegExpExecArray | null = null;
+    while ((match = NEWS_BADGE_IMAGE_RE.exec(html)) !== null) {
+      const album = String(match[1] || '').trim();
+      const badgeCodeRaw = String(match[2] || '').trim();
+      const badgeCode = badgeCodeRaw.toUpperCase();
+      if (!album || !badgeCode) continue;
+
+      const dedupeKey = `${album}:${badgeCode}`;
+      if (seenForNews.has(dedupeKey)) continue;
+      seenForNews.add(dedupeKey);
+
+      out.push({
+        newsId,
+        title,
+        badgeCode: badgeCodeRaw,
+        badgeAlbum: album,
+        badgeImageUrl: `https://images.habbo.com/c_images/${album}/${badgeCode}.gif`,
+        articleUrl: `/news/${newsId}`,
+        publishedAt,
+      });
+
+      if (out.length >= limitBadges) return out;
+    }
+  }
+
+  return out;
 }
 
 export type { NewsRecord, NewsCommentRecord };
