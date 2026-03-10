@@ -21,7 +21,7 @@ type NewsBadgeItem = {
 const BADGES_CACHE_KEY = 'header:news-badges'
 const BADGES_CACHE_TTL_MS = 5 * 60 * 1000
 const MAX_BADGES = 220
-const PAGE_SIZE = 5
+const PAGE_SIZE = 4
 
 function inferAlbumFromUrl(imageUrl?: string | null): string | null {
   const raw = String(imageUrl || '').trim()
@@ -213,8 +213,8 @@ export default function BadgesSlider() {
               id="prev-badges"
             />
 
-            <div className="min-w-0 flex-1 rounded-[6px] border border-[#141433] bg-[rgba(255,255,255,.05)] px-[6px] py-[6px]">
-              <div className="flex h-[56px] items-center gap-[6px]">
+            <div className="min-w-0 flex-1 overflow-hidden rounded-[6px] border border-[#141433] bg-[rgba(255,255,255,.05)] px-[6px] py-[6px]">
+              <div className="flex h-[56px] items-center gap-[10px] overflow-hidden">
                 {currentPageItems.map((item, index) => (
                   <div
                     key={item ? `${item.newsId}-${item.badgeCode}-${index}` : `empty-${page}-${index}`}
@@ -257,4 +257,3 @@ export default function BadgesSlider() {
     </div>
   )
 }
-
