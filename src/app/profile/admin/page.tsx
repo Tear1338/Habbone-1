@@ -46,6 +46,12 @@ async function requireAdmin() {
   return session;
 }
 
+function revalidatePublicFeeds() {
+  revalidatePath('/');
+  revalidatePath('/news');
+  revalidatePath('/forum');
+}
+
 export default async function AdminPage() {
   const session = await requireAdmin();
 
@@ -102,6 +108,8 @@ export default async function AdminPage() {
     if (!id) return;
     await adminDeleteForumTopic(id);
     revalidatePath('/profile/admin');
+    revalidatePublicFeeds();
+    revalidatePath(`/forum/topic/${id}`);
   }
 
   async function updatePost(formData: FormData) {
@@ -145,6 +153,8 @@ export default async function AdminPage() {
     if (!id) return;
     await adminDeleteNews(id);
     revalidatePath('/profile/admin');
+    revalidatePublicFeeds();
+    revalidatePath(`/news/${id}`);
   }
 
   async function updateForumComment(formData: FormData) {

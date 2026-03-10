@@ -5,6 +5,8 @@ import ForumTopics from "@/components/home/forum-topics";
 import LatestMobis from "@/components/home/latest-mobis";
 import Publicite from "@/components/home/publicite";
 
+export const revalidate = 60;
+
 export default function Home() {
   return (
     <main className="mx-auto w-full max-w-[1200px] space-y-[70px] px-4 py-10 sm:px-6">

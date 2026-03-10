@@ -232,6 +232,8 @@ export async function reportForumComment(commentId: number, author: string) {
 }
 
 export async function setTopicVote(topicId: number, author: string, vote: 1 | -1) {
+  const tipo = vote === 1 ? 'pos' : 'neg';
+  const nowUnix = Math.floor(Date.now() / 1000);
   const rows = (await directusService
     .request(
       rItems('forum_topicos_votos' as any, {
@@ -244,23 +246,25 @@ export async function setTopicVote(topicId: number, author: string, vote: 1 | -1
   if (Array.isArray(rows) && rows.length > 0) {
     const id = (rows[0] as any)?.id;
     if (id != null) {
-      await directusService.request(uItem('forum_topicos_votos' as any, id as any, { voto: vote } as any));
+      await directusService.request(
+        uItem('forum_topicos_votos' as any, id as any, { tipo, data: nowUnix } as any),
+      );
       return { updated: true };
     }
   }
-  const payload: any = { id_topico: topicId, voto: vote };
+  const payload: any = { id_topico: topicId, tipo, data: nowUnix };
   if (author) payload.autor = author;
   await directusService.request(cItem('forum_topicos_votos' as any, payload));
   return { created: true };
 }
 
 export async function getTopicVoteSummary(topicId: number): Promise<{ up: number; down: number }> {
-  const count = async (v: 1 | -1) => {
+  const count = async (tipo: 'pos' | 'neg') => {
     const url = new URL(`${directusUrl}/items/${encodeURIComponent('forum_topicos_votos')}`);
     url.searchParams.set('limit', '0');
     url.searchParams.set('meta', 'total_count');
     url.searchParams.set('filter[id_topico][_eq]', String(topicId));
-    url.searchParams.set('filter[voto][_eq]', String(v));
+    url.searchParams.set('filter[tipo][_eq]', tipo);
     try {
       const res = await fetch(url.toString(), {
         headers: { Authorization: `Bearer ${serviceToken}` },
@@ -274,7 +278,7 @@ export async function getTopicVoteSummary(topicId: number): Promise<{ up: number
       return 0;
     }
   };
-  const [up, down] = await Promise.all([count(1), count(-1)]);
+  const [up, down] = await Promise.all([count('pos'), count('neg')]);
   return { up, down };
 }
 
