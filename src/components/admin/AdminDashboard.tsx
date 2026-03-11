@@ -1,14 +1,17 @@
 "use client";
 
-import { type ReactNode, useState } from "react";
-import AdminActivityCharts from "@/components/admin/AdminActivityCharts";
+import { type ReactNode, useMemo, useState } from "react";
+import {
+  FileText,
+  LayoutGrid,
+  Palette,
+  Shield,
+  Users,
+} from "lucide-react";
 import AdminContentManager from "@/components/admin/AdminContentManager";
-import AdminLogsPanel from "@/components/admin/AdminLogsPanel";
 import AdminRolesPanel from "@/components/admin/AdminRolesPanel";
 import AdminThemePanel from "@/components/admin/AdminThemePanel";
 import AdminUsersPanel from "@/components/admin/AdminUsersPanel";
-import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import type {
   ForumCommentRecord as AdminForumComment,
   ForumPostRecord as AdminPost,
@@ -19,13 +22,11 @@ import type {
 } from "@/server/directus/types";
 
 type ServerActionFn = (formData: FormData) => Promise<void>;
-type SettingsTab = "theme" | "roles" | "logs";
+type MainView = "overview" | "users" | "content" | "settings";
 
 interface SummaryStat {
   label: string;
   value: number;
-  icon?: ReactNode;
-  trend?: string;
 }
 
 interface AdminStatus {
@@ -58,137 +59,212 @@ interface AdminDashboardProps {
   deleteStory: ServerActionFn;
 }
 
+type NavItem = {
+  id: MainView;
+  label: string;
+  icon: ReactNode;
+};
+
 export default function AdminDashboard(props: AdminDashboardProps) {
-  const [adminStatus, setAdminStatus] = useState<AdminStatus>({
+  const [view, setView] = useState<MainView>("overview");
+  const [, setAdminStatus] = useState<AdminStatus>({
     rolesVirtual: false,
     usersFallback: false,
     usersSource: "unknown",
   });
-  const [settingsTab, setSettingsTab] = useState<SettingsTab>("theme");
 
-  const totalComments = props.forumComments.length + props.newsComments.length;
-  const totalUsers = props.stats
-    .filter((item) => item.label === "Utilisateurs (legacy)" || item.label === "Utilisateurs (Directus)")
-    .reduce((sum, item) => sum + item.value, 0);
+  const legacyUsers = getStatValue(props.stats, "Utilisateurs (legacy)");
+  const directusUsers = getStatValue(props.stats, "Utilisateurs (Directus)");
+  const articleCount = props.news.length;
+  const topicCount = props.topics.length;
+  const storyCount = props.stories.length;
+  const commentCount = props.forumComments.length + props.newsComments.length;
+  const totalUsers = legacyUsers + directusUsers;
 
-  const statusItems: string[] = [];
-  if (adminStatus.usersFallback && adminStatus.usersSource === "legacy") {
-    statusItems.push("Recherche utilisateurs en mode legacy.");
-  }
-  if (adminStatus.rolesVirtual) {
-    statusItems.push("Roles fournis par le fallback virtuel.");
-  }
+  const navItems: NavItem[] = useMemo(
+    () => [
+      { id: "overview", label: "Accueil", icon: <LayoutGrid className="h-4 w-4" /> },
+      { id: "users", label: "Utilisateurs", icon: <Users className="h-4 w-4" /> },
+      { id: "content", label: "Contenus", icon: <FileText className="h-4 w-4" /> },
+      { id: "settings", label: "Parametres", icon: <Shield className="h-4 w-4" /> },
+    ],
+    [],
+  );
 
   return (
-    <div className="space-y-5 text-[color:var(--text-100)]">
-      <section className="rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(39,39,70,0.94),rgba(20,20,51,0.98))] px-5 py-5 shadow-[0_28px_80px_-68px_rgba(0,0,0,0.86)]">
-        <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <h1 className="text-2xl font-semibold text-white">Administration</h1>
-            <p className="mt-1 text-sm text-white/55">
-              Interface simplifiee. Les memes actions restent disponibles, avec moins de blocs et une lecture plus claire.
-            </p>
+    <div className="space-y-5">
+      {/* Navigation tabs */}
+      <nav className="flex items-center gap-1 overflow-x-auto rounded-[4px] border border-[#141433] bg-[#1F1F3E] p-1.5">
+        {navItems.map((item) => (
+          <button
+            key={item.id}
+            type="button"
+            onClick={() => setView(item.id)}
+            className={`inline-flex items-center gap-2 rounded-[4px] px-4 py-2.5 text-xs font-bold uppercase tracking-[0.08em] transition-colors ${
+              view === item.id
+                ? "bg-[#2596FF] text-white"
+                : "text-[color:var(--foreground)]/65 hover:bg-[#25254D] hover:text-white"
+            }`}
+          >
+            {item.icon}
+            {item.label}
+          </button>
+        ))}
+
+        <div className="ml-auto hidden items-center gap-2 px-3 text-xs text-[color:var(--foreground)]/55 sm:flex">
+          <span>{props.currentAdminName || "Admin"}</span>
+        </div>
+      </nav>
+
+      {/* Views */}
+      {view === "overview" && (
+        <div className="space-y-5">
+          {/* Stats grid */}
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard label="Utilisateurs" value={totalUsers} icon={<Users className="h-4 w-4" />} />
+            <StatCard label="Articles" value={articleCount} icon={<FileText className="h-4 w-4" />} />
+            <StatCard label="Sujets forum" value={topicCount} icon={<FileText className="h-4 w-4" />} />
+            <StatCard label="Commentaires" value={commentCount} icon={<FileText className="h-4 w-4" />} />
           </div>
-          <div className="flex flex-wrap items-center gap-2 text-sm text-white/62">
-            <Badge className="border-0 bg-white/8 text-white/72">{totalUsers} utilisateurs</Badge>
-            <Badge className="border-0 bg-white/8 text-white/72">{props.topics.length + props.posts.length + props.news.length + totalComments + props.stories.length} contenus</Badge>
-            <span>Connecte: {props.currentAdminName || "Administrateur"}</span>
+
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            <StatCard label="Stories" value={storyCount} icon={<FileText className="h-4 w-4" />} />
+            <StatCard label="Legacy" value={legacyUsers} icon={<Users className="h-4 w-4" />} />
+            <StatCard label="Directus" value={directusUsers} icon={<Users className="h-4 w-4" />} />
+          </div>
+
+          {/* Quick access */}
+          <div className="grid gap-3 sm:grid-cols-3">
+            <QuickCard
+              title="Utilisateurs"
+              description="Recherche, moderation et roles"
+              icon={<Users className="h-5 w-5" />}
+              onClick={() => setView("users")}
+            />
+            <QuickCard
+              title="Contenus"
+              description="Articles, forum et stories"
+              icon={<FileText className="h-5 w-5" />}
+              onClick={() => setView("content")}
+            />
+            <QuickCard
+              title="Parametres"
+              description="Theme et gestion des roles"
+              icon={<Palette className="h-5 w-5" />}
+              onClick={() => setView("settings")}
+            />
           </div>
         </div>
-      </section>
+      )}
 
-      {statusItems.length > 0 ? (
-        <section className="rounded-[18px] border border-[#ffd772]/18 bg-[#ffd772]/8 px-4 py-3 text-sm text-[#ffe39e]">
-          {statusItems.join(" ")}
-        </section>
-      ) : null}
+      {view === "users" && <AdminUsersPanel onStatusChange={setAdminStatus} />}
 
-      <Tabs defaultValue="users" className="space-y-4">
-        <TabsList className="h-auto flex-wrap justify-start gap-2 rounded-[18px] border border-white/10 bg-[rgba(20,20,51,0.92)] p-2">
-          <TabsTrigger value="users" className="rounded-[14px] px-4 py-2 data-[state=active]:bg-[#2596ff] data-[state=active]:text-white">
-            Utilisateurs
-          </TabsTrigger>
-          <TabsTrigger value="content" className="rounded-[14px] px-4 py-2 data-[state=active]:bg-[#2596ff] data-[state=active]:text-white">
-            Contenus
-          </TabsTrigger>
-          <TabsTrigger value="activity" className="rounded-[14px] px-4 py-2 data-[state=active]:bg-[#2596ff] data-[state=active]:text-white">
-            Activite
-          </TabsTrigger>
-          <TabsTrigger value="settings" className="rounded-[14px] px-4 py-2 data-[state=active]:bg-[#2596ff] data-[state=active]:text-white">
-            Parametres
-          </TabsTrigger>
-        </TabsList>
+      {view === "content" && (
+        <AdminContentManager
+          topics={props.topics}
+          posts={props.posts}
+          news={props.news}
+          forumComments={props.forumComments}
+          newsComments={props.newsComments}
+          topicTitleById={props.topicTitleById}
+          updateTopic={props.updateTopic}
+          deleteTopic={props.deleteTopic}
+          updatePost={props.updatePost}
+          deletePost={props.deletePost}
+          updateArticle={props.updateArticle}
+          deleteArticle={props.deleteArticle}
+          updateForumComment={props.updateForumComment}
+          deleteForumComment={props.deleteForumComment}
+          updateNewsComment={props.updateNewsComment}
+          deleteNewsComment={props.deleteNewsComment}
+          stories={props.stories}
+          updateStory={props.updateStory}
+          deleteStory={props.deleteStory}
+        />
+      )}
 
-        <TabsContent value="users" className="mt-0">
-          <section className="rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(39,39,70,0.94),rgba(20,20,51,0.98))] p-4 sm:p-5">
-            <AdminUsersPanel onStatusChange={setAdminStatus} />
-          </section>
-        </TabsContent>
-
-        <TabsContent value="content" className="mt-0">
-          <section className="rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(39,39,70,0.94),rgba(20,20,51,0.98))] p-4 sm:p-5">
-            <AdminContentManager
-              topics={props.topics}
-              posts={props.posts}
-              news={props.news}
-              forumComments={props.forumComments}
-              newsComments={props.newsComments}
-              topicTitleById={props.topicTitleById}
-              updateTopic={props.updateTopic}
-              deleteTopic={props.deleteTopic}
-              updatePost={props.updatePost}
-              deletePost={props.deletePost}
-              updateArticle={props.updateArticle}
-              deleteArticle={props.deleteArticle}
-              updateForumComment={props.updateForumComment}
-              deleteForumComment={props.deleteForumComment}
-              updateNewsComment={props.updateNewsComment}
-              deleteNewsComment={props.deleteNewsComment}
-              stories={props.stories}
-              updateStory={props.updateStory}
-              deleteStory={props.deleteStory}
-            />
-          </section>
-        </TabsContent>
-
-        <TabsContent value="activity" className="mt-0">
-          <section className="rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(39,39,70,0.94),rgba(20,20,51,0.98))] p-4 sm:p-5">
-            <AdminActivityCharts />
-          </section>
-        </TabsContent>
-
-        <TabsContent value="settings" className="mt-0">
-          <section className="space-y-4 rounded-[24px] border border-white/10 bg-[linear-gradient(180deg,rgba(39,39,70,0.94),rgba(20,20,51,0.98))] p-4 sm:p-5">
-            <div className="flex flex-wrap gap-2">
-              <button
-                type="button"
-                onClick={() => setSettingsTab("theme")}
-                className={`rounded-[14px] px-4 py-2 text-sm transition ${settingsTab === "theme" ? "bg-[#2596ff] text-white" : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"}`}
-              >
-                Theme
-              </button>
-              <button
-                type="button"
-                onClick={() => setSettingsTab("roles")}
-                className={`rounded-[14px] px-4 py-2 text-sm transition ${settingsTab === "roles" ? "bg-[#2596ff] text-white" : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"}`}
-              >
-                Roles
-              </button>
-              <button
-                type="button"
-                onClick={() => setSettingsTab("logs")}
-                className={`rounded-[14px] px-4 py-2 text-sm transition ${settingsTab === "logs" ? "bg-[#2596ff] text-white" : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"}`}
-              >
-                Logs
-              </button>
-            </div>
-
-            {settingsTab === "theme" ? <AdminThemePanel /> : null}
-            {settingsTab === "roles" ? <AdminRolesPanel /> : null}
-            {settingsTab === "logs" ? <AdminLogsPanel /> : null}
-          </section>
-        </TabsContent>
-      </Tabs>
+      {view === "settings" && <SettingsView />}
     </div>
   );
+}
+
+function SettingsView() {
+  const [tab, setTab] = useState<"theme" | "roles">("theme");
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-1 rounded-[4px] border border-[#141433] bg-[#1F1F3E] p-1.5">
+        <button
+          type="button"
+          onClick={() => setTab("theme")}
+          className={`rounded-[4px] px-4 py-2 text-xs font-bold uppercase tracking-[0.08em] transition-colors ${
+            tab === "theme"
+              ? "bg-[#2596FF] text-white"
+              : "text-[color:var(--foreground)]/65 hover:bg-[#25254D] hover:text-white"
+          }`}
+        >
+          Theme
+        </button>
+        <button
+          type="button"
+          onClick={() => setTab("roles")}
+          className={`rounded-[4px] px-4 py-2 text-xs font-bold uppercase tracking-[0.08em] transition-colors ${
+            tab === "roles"
+              ? "bg-[#2596FF] text-white"
+              : "text-[color:var(--foreground)]/65 hover:bg-[#25254D] hover:text-white"
+          }`}
+        >
+          Roles
+        </button>
+      </div>
+
+      <div className="rounded-[4px] border border-[#141433] bg-[#1F1F3E] p-5">
+        {tab === "theme" ? <AdminThemePanel /> : <AdminRolesPanel />}
+      </div>
+    </div>
+  );
+}
+
+function StatCard({ label, value, icon }: { label: string; value: number | string; icon: ReactNode }) {
+  return (
+    <div className="rounded-[4px] border border-[#141433] bg-[#1F1F3E] px-4 py-4">
+      <div className="flex items-center justify-between text-xs font-bold uppercase tracking-[0.08em] text-[color:var(--foreground)]/55">
+        <span>{label}</span>
+        <span className="text-[color:var(--foreground)]/40">{icon}</span>
+      </div>
+      <p className="mt-2 text-2xl font-bold text-white">{value}</p>
+    </div>
+  );
+}
+
+function QuickCard({
+  title,
+  description,
+  icon,
+  onClick,
+}: {
+  title: string;
+  description: string;
+  icon: ReactNode;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="group rounded-[4px] border border-[#141433] bg-[#1F1F3E] p-5 text-left transition-colors hover:border-[#2596FF]/40 hover:bg-[#25254D]"
+    >
+      <div className="flex items-center gap-3">
+        <span className="rounded-[4px] bg-[#25254D] p-2.5 text-[#2596FF]">{icon}</span>
+        <div>
+          <h3 className="text-sm font-bold uppercase tracking-[0.08em] text-white">{title}</h3>
+          <p className="mt-1 text-xs text-[color:var(--foreground)]/55">{description}</p>
+        </div>
+      </div>
+    </button>
+  );
+}
+
+function getStatValue(stats: SummaryStat[], label: string) {
+  return stats.find((item) => item.label === label)?.value || 0;
 }

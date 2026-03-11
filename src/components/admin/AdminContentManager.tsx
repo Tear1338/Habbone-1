@@ -1,23 +1,16 @@
 "use client";
 
 import dynamic from "next/dynamic";
-import { useCallback, useMemo, useState } from "react";
 import {
-  Camera,
-  ChevronLeft,
-  ChevronRight,
-  Eye,
-  FileText,
-  ImageIcon,
-  MessageCircle,
-  MessagesSquare,
-  Newspaper,
-  Pencil,
-  Pin,
-  Save,
-  Trash2,
-  X,
-} from "lucide-react";
+  type Dispatch,
+  type ReactNode,
+  type SetStateAction,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+import { ChevronLeft, ChevronRight, Eye, Pencil, Save, Search, Trash2, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -37,7 +30,7 @@ import type {
 
 const AdminRichEditor = dynamic(() => import("@/components/admin/AdminRichEditor"), {
   ssr: false,
-  loading: () => <div className="h-32 animate-pulse rounded-[20px] bg-white/5" />,
+  loading: () => <div className="h-32 animate-pulse rounded-[4px] bg-[#25254D]" />,
 });
 
 type ServerActionFn = (formData: FormData) => Promise<void>;
@@ -74,28 +67,20 @@ interface AdminContentManagerProps {
 
 const PAGE_SIZE = 20;
 const DIRECTUS_BASE_URL = (process.env.NEXT_PUBLIC_DIRECTUS_URL || "https://api.habbone.fr").replace(/\/$/, "");
+const CONTENT_ORDER: ContentType[] = ["articles", "topics", "posts", "forumComments", "newsComments", "stories"];
 
-const CONTENT_SECTIONS: Record<
-  ContentType,
-  {
-    label: string;
-    description: string;
-    icon: React.ComponentType<{ className?: string }>;
-    accent: string;
-  }
-> = {
-  topics: { label: "Sujets forum", description: "Epingle, ferme ou edite les topics.", icon: MessagesSquare, accent: "text-[#7bc3ff]" },
-  posts: { label: "Messages forum", description: "Controle les reponses liees aux sujets.", icon: MessageCircle, accent: "text-[#67d88b]" },
-  articles: { label: "Articles", description: "Travaille les titres, resumes et contenus news.", icon: Newspaper, accent: "text-[#ffd772]" },
-  forumComments: { label: "Commentaires forum", description: "Moderation rapide des commentaires forum.", icon: FileText, accent: "text-[#ff9db1]" },
-  newsComments: { label: "Commentaires news", description: "Gestion des reactions liees aux articles.", icon: FileText, accent: "text-[#f6b4ff]" },
-  stories: { label: "Stories", description: "Titre, media et statut des stories.", icon: Camera, accent: "text-[#a6f6ff]" },
+const CONTENT_SECTIONS: Record<ContentType, { label: string; description: string }> = {
+  topics: { label: "Sujets forum", description: "Editer ou moderer les sujets." },
+  posts: { label: "Messages forum", description: "Reponses liees aux sujets." },
+  articles: { label: "Articles", description: "Titres, resumes et contenu." },
+  forumComments: { label: "Com. forum", description: "Reactions du forum." },
+  newsComments: { label: "Com. news", description: "Reactions des articles." },
+  stories: { label: "Stories", description: "Titre, media et statut." },
 };
 
 export default function AdminContentManager(props: AdminContentManagerProps) {
   const { topics, posts, news, forumComments, newsComments, stories, topicTitleById } = props;
-
-  const [contentType, setContentType] = useState<ContentType>("topics");
+  const [contentType, setContentType] = useState<ContentType>("articles");
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [selectedId, setSelectedId] = useState<number | null>(null);
@@ -103,29 +88,42 @@ export default function AdminContentManager(props: AdminContentManagerProps) {
 
   const searchLower = search.trim().toLowerCase();
 
+  const countsByType = useMemo<Record<ContentType, number>>(
+    () => ({
+      topics: topics.length,
+      posts: posts.length,
+      articles: news.length,
+      forumComments: forumComments.length,
+      newsComments: newsComments.length,
+      stories: stories.length,
+    }),
+    [topics.length, posts.length, news.length, forumComments.length, newsComments.length, stories.length],
+  );
+
   const handleTypeChange = useCallback((type: ContentType) => {
     setContentType(type);
+    setSearch("");
     setPage(1);
     setSelectedId(null);
     setIsEditing(false);
   }, []);
 
   const filteredData = useMemo(() => {
-    const filterFn = (searchable: string) => !searchLower || searchable.toLowerCase().includes(searchLower);
+    const matches = (value: string) => !searchLower || value.toLowerCase().includes(searchLower);
 
     switch (contentType) {
       case "topics":
-        return topics.filter((topic) => filterFn(`${topic.titulo ?? ""} ${topic.autor ?? ""}`));
+        return topics.filter((topic) => matches(`${topic.titulo ?? ""} ${topic.autor ?? ""}`));
       case "posts":
-        return posts.filter((post) => filterFn(`${post.autor ?? ""} ${topicTitleById[post.id_topico ?? 0] ?? ""}`));
+        return posts.filter((post) => matches(`${post.autor ?? ""} ${topicTitleById[post.id_topico ?? 0] ?? ""}`));
       case "articles":
-        return news.filter((article) => filterFn(`${article.titulo ?? ""} ${article.autor ?? ""}`));
+        return news.filter((article) => matches(`${article.titulo ?? ""} ${article.autor ?? ""}`));
       case "forumComments":
-        return forumComments.filter((comment) => filterFn(`${comment.autor ?? ""} ${comment.id_forum ?? ""}`));
+        return forumComments.filter((comment) => matches(`${comment.autor ?? ""} ${comment.id_forum ?? ""}`));
       case "newsComments":
-        return newsComments.filter((comment) => filterFn(`${comment.autor ?? ""} ${comment.id_noticia ?? ""}`));
+        return newsComments.filter((comment) => matches(`${comment.autor ?? ""} ${comment.id_noticia ?? ""}`));
       case "stories":
-        return stories.filter((story) => filterFn(`${story.titulo ?? ""} ${story.autor ?? ""}`));
+        return stories.filter((story) => matches(`${story.titulo ?? ""} ${story.autor ?? ""}`));
       default:
         return [];
     }
@@ -140,7 +138,14 @@ export default function AdminContentManager(props: AdminContentManagerProps) {
     return filteredData.find((item) => (item as { id: number }).id === selectedId) || null;
   }, [filteredData, selectedId]);
 
-  const getActions = useCallback(() => {
+  useEffect(() => {
+    if (selectedItem) return;
+    const firstItem = filteredData[0] as { id: number } | undefined;
+    setSelectedId(firstItem?.id ?? null);
+    setIsEditing(false);
+  }, [filteredData, selectedItem]);
+
+  const actionSet = useMemo(() => {
     switch (contentType) {
       case "topics":
         return { update: props.updateTopic, remove: props.deleteTopic };
@@ -163,59 +168,69 @@ export default function AdminContentManager(props: AdminContentManagerProps) {
     if (!confirm(`Supprimer l'element #${id} ?`)) return;
     const formData = new FormData();
     formData.set("id", String(id));
-    await getActions().remove(formData);
+    await actionSet.remove(formData);
     setSelectedId(null);
     setIsEditing(false);
   };
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-        <div className="flex flex-wrap gap-2">
-          {(Object.keys(CONTENT_SECTIONS) as ContentType[]).map((type) => {
-            const active = contentType === type;
-            return (
-              <button
-                key={type}
-                type="button"
-                onClick={() => handleTypeChange(type)}
-                className={`rounded-[14px] px-4 py-2 text-sm transition ${active ? "bg-[#2596ff] text-white" : "bg-white/5 text-white/70 hover:bg-white/10 hover:text-white"}`}
-              >
-                {CONTENT_SECTIONS[type].label}
-              </button>
-            );
-          })}
-        </div>
+      {/* Type selector tabs */}
+      <div className="flex flex-wrap gap-1 rounded-[4px] border border-[#141433] bg-[#1F1F3E] p-1.5">
+        {CONTENT_ORDER.map((type) => (
+          <button
+            key={type}
+            type="button"
+            onClick={() => handleTypeChange(type)}
+            className={cn(
+              "rounded-[4px] px-3 py-2 text-xs font-bold uppercase tracking-[0.06em] transition-colors",
+              contentType === type
+                ? "bg-[#2596FF] text-white"
+                : "text-[color:var(--foreground)]/60 hover:bg-[#25254D] hover:text-white",
+            )}
+          >
+            {CONTENT_SECTIONS[type].label}
+            <span className="ml-1.5 text-[10px] opacity-70">{countsByType[type]}</span>
+          </button>
+        ))}
+      </div>
 
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <Input
-            id="admin-content-search"
-            placeholder="Rechercher"
-            value={search}
-            onChange={(event) => {
-              setSearch(event.target.value);
-              setPage(1);
-            }}
-            className="h-11 w-full rounded-2xl border-white/10 bg-black/20 text-white placeholder:text-white/35 sm:w-72"
-          />
-          <Badge className="border-0 bg-white/8 px-3 py-2 text-white/72">{filteredData.length} element(s)</Badge>
+      {/* Search */}
+      <div className="rounded-[4px] border border-[#141433] bg-[#1F1F3E] p-4">
+        <div className="flex items-center gap-3">
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[color:var(--foreground)]/35" />
+            <Input
+              placeholder="Titre, auteur, identifiant..."
+              value={search}
+              onChange={(event) => {
+                setSearch(event.target.value);
+                setPage(1);
+                setSelectedId(null);
+                setIsEditing(false);
+              }}
+              className="h-[45px] rounded-[4px] border-[#141433] bg-[#25254D] pl-10 text-white placeholder:text-[color:var(--foreground)]/35"
+            />
+          </div>
+          <div className="text-xs text-[color:var(--foreground)]/55">
+            {filteredData.length} / {countsByType[contentType]}
+          </div>
         </div>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[320px_minmax(0,1fr)]">
-        <section className="overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.03]">
-          <div className="flex items-center justify-between gap-3 border-b border-white/8 px-4 py-4">
-            <div>
-              <p className="text-sm font-medium text-white">{activeMeta.label}</p>
-              <p className="mt-1 text-xs text-white/45">Page {safePage}/{totalPages}</p>
-            </div>
-            <Badge className="border-0 bg-white/8 text-white/72">{filteredData.length}</Badge>
+      {/* Content: list + detail */}
+      <div className="grid gap-4 xl:grid-cols-[340px_minmax(0,1fr)]">
+        {/* List */}
+        <div className="overflow-hidden rounded-[4px] border border-[#141433] bg-[#1F1F3E]">
+          <div className="border-b border-[#141433] px-4 py-3">
+            <p className="text-xs font-bold uppercase tracking-[0.08em] text-white">{activeMeta.label}</p>
+            <p className="mt-0.5 text-xs text-[color:var(--foreground)]/55">{activeMeta.description}</p>
           </div>
 
-          <ScrollArea className="h-[560px] xl:h-[660px]">
-            <div className="space-y-2 p-3">
+          <ScrollArea className="h-[580px]">
+            <div>
               {paginatedData.length === 0 ? (
-                <div className="rounded-[18px] border border-dashed border-white/10 bg-white/[0.03] px-4 py-10 text-center text-sm text-white/50">
+                <div className="px-4 py-12 text-center text-xs text-[color:var(--foreground)]/45">
                   Aucun resultat.
                 </div>
               ) : (
@@ -236,61 +251,61 @@ export default function AdminContentManager(props: AdminContentManagerProps) {
             </div>
           </ScrollArea>
 
-          <div className="flex items-center justify-between gap-3 border-t border-white/8 px-4 py-3 text-xs text-white/50">
-            <span>{filteredData.length} resultat(s)</span>
-            <div className="flex items-center gap-2">
+          {/* Pagination */}
+          <div className="flex items-center justify-between border-t border-[#141433] px-4 py-2.5 text-xs text-[color:var(--foreground)]/50">
+            <span>{filteredData.length} element(s)</span>
+            <div className="flex items-center gap-1">
               <Button
                 type="button"
-                variant="ghost"
+                variant="outline"
                 size="icon"
-                className="h-8 w-8 rounded-full text-white/70 hover:bg-white/8 hover:text-white"
                 disabled={safePage <= 1}
-                onClick={() => setPage((current) => Math.max(1, current - 1))}
+                onClick={() => setPage(Math.max(1, safePage - 1))}
+                className="h-7 w-7 rounded-[4px] border-[#141433] bg-[#25254D] text-white hover:bg-[#303060]"
               >
-                <ChevronLeft className="h-4 w-4" />
+                <ChevronLeft className="h-3 w-3" />
               </Button>
-              <span className="min-w-16 text-center text-white/70">{safePage}/{totalPages}</span>
+              <span className="min-w-[40px] text-center">{safePage}/{totalPages}</span>
               <Button
                 type="button"
-                variant="ghost"
+                variant="outline"
                 size="icon"
-                className="h-8 w-8 rounded-full text-white/70 hover:bg-white/8 hover:text-white"
                 disabled={safePage >= totalPages}
-                onClick={() => setPage((current) => Math.min(totalPages, current + 1))}
+                onClick={() => setPage(Math.min(totalPages, safePage + 1))}
+                className="h-7 w-7 rounded-[4px] border-[#141433] bg-[#25254D] text-white hover:bg-[#303060]"
               >
-                <ChevronRight className="h-4 w-4" />
+                <ChevronRight className="h-3 w-3" />
               </Button>
             </div>
           </div>
-        </section>
+        </div>
 
-        <section className="min-h-[720px] overflow-hidden rounded-[22px] border border-white/10 bg-white/[0.03]">
-        {!selectedItem ? (
-          <div className="flex h-full min-h-[720px] items-center justify-center px-6 py-10">
-            <div className="max-w-md text-center">
-              <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-[18px] border border-white/10 bg-white/5 text-[#ffd722]">
-                <Eye className="h-6 w-6" />
+        {/* Detail panel */}
+        <div className="min-h-[640px] overflow-hidden rounded-[4px] border border-[#141433] bg-[#1F1F3E]">
+          {!selectedItem ? (
+            <div className="flex h-full min-h-[640px] items-center justify-center px-6 py-10">
+              <div className="text-center">
+                <Eye className="mx-auto h-8 w-8 text-[color:var(--foreground)]/30" />
+                <p className="mt-3 text-sm font-bold text-white">Aucun contenu selectionne</p>
+                <p className="mt-1 text-xs text-[color:var(--foreground)]/50">
+                  Choisis un element dans la liste.
+                </p>
               </div>
-              <h3 className="mt-5 text-2xl font-semibold text-white">Selectionne un contenu</h3>
-              <p className="mt-3 text-sm leading-6 text-white/58">
-                Choisis un element dans la liste a gauche pour le consulter ou l'editer.
-              </p>
             </div>
-          </div>
-        ) : (
-          <DetailPanel
-            key={`${contentType}-${(selectedItem as { id: number }).id}`}
-            item={selectedItem}
-            contentType={contentType}
-            topicTitleById={topicTitleById}
-            isEditing={isEditing}
-            onEdit={() => setIsEditing(true)}
-            onCancelEdit={() => setIsEditing(false)}
-            onSave={getActions().update}
-            onDelete={() => handleDelete((selectedItem as { id: number }).id)}
-          />
-        )}
-        </section>
+          ) : (
+            <DetailPanel
+              key={`${contentType}-${(selectedItem as { id: number }).id}`}
+              item={selectedItem}
+              contentType={contentType}
+              topicTitleById={topicTitleById}
+              isEditing={isEditing}
+              onEdit={() => setIsEditing(true)}
+              onCancelEdit={() => setIsEditing(false)}
+              onSave={actionSet.update}
+              onDelete={() => void handleDelete((selectedItem as { id: number }).id)}
+            />
+          )}
+        </div>
       </div>
     </div>
   );
@@ -309,79 +324,28 @@ function ListItem({
   isSelected: boolean;
   onSelect: () => void;
 }) {
-  const meta = CONTENT_SECTIONS[contentType];
-  const ItemIcon = meta.icon;
   const itemId = (item as { id: number }).id;
-
-  const title =
-    contentType === "topics"
-      ? (item as AdminTopic).titulo || "(sans titre)"
-      : contentType === "articles"
-        ? (item as AdminArticle).titulo || "(sans titre)"
-        : contentType === "posts"
-          ? topicTitleById[(item as AdminPost).id_topico ?? 0] || `Sujet #${(item as AdminPost).id_topico}`
-          : contentType === "forumComments"
-            ? `Commentaire sur sujet #${(item as AdminForumComment).id_forum}`
-            : contentType === "newsComments"
-              ? `Commentaire sur article #${(item as AdminNewsComment).id_noticia}`
-              : (item as AdminStory).titulo || `Story #${(item as AdminStory).id}`;
-
-  const summary =
-    contentType === "topics"
-      ? stripHtml((item as AdminTopic).conteudo)
-      : contentType === "articles"
-        ? (item as AdminArticle).descricao || stripHtml((item as AdminArticle).noticia)
-        : contentType === "posts"
-          ? stripHtml((item as AdminPost).conteudo)
-          : contentType === "forumComments"
-            ? stripHtml((item as AdminForumComment).comentario)
-            : contentType === "newsComments"
-              ? stripHtml((item as AdminNewsComment).comentario)
-              : (item as AdminStory).status || "Story";
-
-  const author = (item as { autor?: string | null }).autor || "Auteur inconnu";
-  const date =
-    (item as { data?: string | null }).data ||
-    (item as { date_created?: string | null }).date_created ||
-    (((item as { dta?: number | null }).dta ?? 0) > 0
-      ? new Date(((item as { dta?: number | null }).dta ?? 0) * 1000).toISOString()
-      : undefined);
+  const title = getItemTitle(item, contentType, topicTitleById);
+  const author = (item as { autor?: string | null }).autor || "Inconnu";
+  const date = resolveItemDate(item);
 
   return (
     <button
       type="button"
       onClick={onSelect}
       className={cn(
-        "w-full rounded-[22px] border px-4 py-4 text-left transition",
+        "w-full border-b border-[#141433] px-4 py-3 text-left transition-colors last:border-b-0",
         isSelected
-          ? "border-[#2596ff]/35 bg-[#2596ff]/10 text-white shadow-[0_24px_60px_-48px_rgba(37,150,255,0.9)]"
-          : "border-white/8 bg-white/[0.03] text-white/76 hover:border-white/14 hover:bg-white/[0.05]",
+          ? "bg-[#2596FF]/15 text-white"
+          : "text-[color:var(--foreground)]/70 hover:bg-[#25254D]",
       )}
     >
-      <div className="flex items-start gap-3">
-        <div
-          className={cn(
-            "flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border",
-            isSelected ? "border-[#2596ff]/30 bg-[#2596ff]/16" : "border-white/10 bg-black/10",
-          )}
-        >
-          <ItemIcon className={cn("h-4 w-4", isSelected ? "text-[#7bc3ff]" : meta.accent)} />
-        </div>
-
-        <div className="min-w-0 flex-1">
-          <div className="flex items-start justify-between gap-3">
-            <div className="min-w-0">
-              <p className="truncate font-medium text-white">{title}</p>
-              <p className="mt-1 text-xs text-white/45">
-                #{itemId} · {author}
-                {date ? ` · ${formatDateTime(date)}` : ""}
-              </p>
-            </div>
-            <StatusBadges item={item} contentType={contentType} />
-          </div>
-          <p className="mt-3 line-clamp-2 text-sm leading-5 text-white/56">{summary || "Aucun extrait disponible."}</p>
-        </div>
-      </div>
+      <p className="truncate text-sm font-semibold text-white">{title}</p>
+      <p className="mt-0.5 text-[11px] text-[color:var(--foreground)]/45">
+        #{itemId} - {author}
+        {date ? ` - ${formatDateTime(date)}` : ""}
+      </p>
+      <StatusBadges item={item} contentType={contentType} />
     </button>
   );
 }
@@ -407,27 +371,9 @@ function DetailPanel({
 }) {
   const [formState, setFormState] = useState<Record<string, string | boolean>>({});
   const itemId = (item as { id: number }).id;
-
-  const title =
-    contentType === "topics"
-      ? (item as AdminTopic).titulo
-      : contentType === "articles"
-        ? (item as AdminArticle).titulo
-        : contentType === "posts"
-          ? topicTitleById[(item as AdminPost).id_topico ?? 0]
-          : contentType === "forumComments"
-            ? `Commentaire forum #${itemId}`
-            : contentType === "newsComments"
-              ? `Commentaire article #${itemId}`
-              : (item as AdminStory).titulo || `Story #${itemId}`;
-
-  const author = (item as { autor?: string | null }).autor || "Auteur inconnu";
-  const date =
-    (item as { data?: string | null }).data ||
-    (item as { date_created?: string | null }).date_created ||
-    (((item as { dta?: number | null }).dta ?? 0) > 0
-      ? new Date(((item as { dta?: number | null }).dta ?? 0) * 1000).toISOString()
-      : undefined);
+  const title = getItemTitle(item, contentType, topicTitleById) || "(sans titre)";
+  const author = (item as { autor?: string | null }).autor || "Inconnu";
+  const date = resolveItemDate(item);
 
   const startEdit = () => {
     const initial: Record<string, string | boolean> = {};
@@ -478,38 +424,41 @@ function DetailPanel({
   };
 
   return (
-    <div className="flex h-full min-h-[720px] flex-col">
-      <div className="border-b border-white/8 px-5 py-5 sm:px-6">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="space-y-3">
+    <div className="flex h-full min-h-[640px] flex-col">
+      {/* Header */}
+      <div className="border-b border-[#141433] px-5 py-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+          <div>
             <div className="flex flex-wrap items-center gap-2">
-              <Badge className="border-0 bg-white/8 text-white/72">{CONTENT_SECTIONS[contentType].label}</Badge>
+              <Badge className="border-0 bg-[#25254D] text-xs text-[color:var(--foreground)]/70">
+                {CONTENT_SECTIONS[contentType].label}
+              </Badge>
               <StatusBadges item={item} contentType={contentType} />
             </div>
-            <div>
-              <h3 className="text-2xl font-semibold text-white">{title || "(sans titre)"}</h3>
-              <p className="mt-2 text-sm text-white/52">
-                #{itemId} · {author}
-                {date ? ` · ${formatDateTime(date)}` : ""}
-              </p>
-            </div>
+            <h3 className="mt-2 text-lg font-bold text-white">{title}</h3>
+            <p className="mt-0.5 text-xs text-[color:var(--foreground)]/50">
+              #{itemId} - {author}
+              {date ? ` - ${formatDateTime(date)}` : ""}
+            </p>
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className="flex gap-2">
             {!isEditing ? (
               <>
                 <Button
                   type="button"
-                  variant="outline"
-                  size="sm"
                   onClick={startEdit}
-                  className="rounded-full border-white/10 bg-white/5 text-white hover:bg-white/10"
+                  className="h-[36px] rounded-[4px] bg-[#2596FF] text-xs font-bold uppercase text-white hover:bg-[#2976E8]"
                 >
-                  <Pencil className="mr-1 h-4 w-4" />
+                  <Pencil className="mr-1.5 h-3 w-3" />
                   Modifier
                 </Button>
-                <Button type="button" variant="destructive" size="sm" onClick={onDelete} className="rounded-full">
-                  <Trash2 className="mr-1 h-4 w-4" />
+                <Button
+                  type="button"
+                  onClick={onDelete}
+                  className="h-[36px] rounded-[4px] bg-red-500 text-xs font-bold uppercase text-white hover:bg-red-600"
+                >
+                  <Trash2 className="mr-1.5 h-3 w-3" />
                   Supprimer
                 </Button>
               </>
@@ -517,16 +466,18 @@ function DetailPanel({
               <>
                 <Button
                   type="button"
-                  variant="ghost"
-                  size="sm"
                   onClick={onCancelEdit}
-                  className="rounded-full text-white/70 hover:bg-white/8 hover:text-white"
+                  className="h-[36px] rounded-[4px] border border-[#141433] bg-[#25254D] text-xs font-bold uppercase text-white hover:bg-[#303060]"
                 >
-                  <X className="mr-1 h-4 w-4" />
+                  <X className="mr-1.5 h-3 w-3" />
                   Annuler
                 </Button>
-                <Button type="button" size="sm" onClick={handleSave} className="rounded-full bg-[#2596ff] text-white hover:bg-[#1e84e0]">
-                  <Save className="mr-1 h-4 w-4" />
+                <Button
+                  type="button"
+                  onClick={() => void handleSave()}
+                  className="h-[36px] rounded-[4px] bg-[#0FD52F] text-xs font-bold uppercase text-white hover:bg-green-600"
+                >
+                  <Save className="mr-1.5 h-3 w-3" />
                   Enregistrer
                 </Button>
               </>
@@ -535,8 +486,9 @@ function DetailPanel({
         </div>
       </div>
 
+      {/* Content */}
       <ScrollArea className="flex-1">
-        <div className="p-5 sm:p-6">
+        <div className="p-5">
           {!isEditing ? (
             <ViewContent item={item} contentType={contentType} topicTitleById={topicTitleById} />
           ) : (
@@ -606,42 +558,42 @@ function ViewContent({
   }
 
   return (
-    <div className="space-y-5">
-      {metaCards.length > 0 ? (
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+    <div className="space-y-4">
+      {metaCards.length > 0 && (
+        <div className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
           {metaCards.map((entry) => (
-            <div key={`${entry.label}-${entry.value}`} className="rounded-[22px] border border-white/8 bg-white/[0.03] px-4 py-4">
-              <p className="text-xs uppercase tracking-[0.18em] text-white/40">{entry.label}</p>
-              <p className="mt-2 text-sm leading-6 text-white/78">{entry.value}</p>
+            <div
+              key={`${entry.label}-${entry.value}`}
+              className="rounded-[4px] border border-[#141433] bg-[#25254D] px-3 py-2.5"
+            >
+              <p className="text-[10px] font-bold uppercase tracking-[0.1em] text-[color:var(--foreground)]/45">{entry.label}</p>
+              <p className="mt-1 text-sm text-[color:var(--foreground)]/75">{entry.value}</p>
             </div>
           ))}
         </div>
-      ) : null}
+      )}
 
-      {imageUrl ? (
-        <section className="rounded-[26px] border border-white/10 bg-black/20 p-4">
-          <div className="mb-3 flex items-center gap-2 text-sm font-medium text-white">
-            <ImageIcon className="h-4 w-4 text-[#ffd772]" />
-            Apercu media
-          </div>
+      {imageUrl && (
+        <div className="rounded-[4px] border border-[#141433] bg-[#25254D] p-3">
+          <p className="text-xs font-bold uppercase text-white">Media</p>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={imageUrl} alt="Apercu contenu admin" className="max-h-[360px] w-full rounded-[18px] object-contain bg-black/20" />
-          <p className="mt-3 break-all text-xs text-white/42">{imageId}</p>
-        </section>
-      ) : null}
+          <img
+            src={imageUrl}
+            alt="Apercu"
+            className="mt-2 max-h-[300px] w-full rounded-[4px] bg-black/20 object-contain"
+          />
+        </div>
+      )}
 
-      {bodyHtml ? (
-        <section className="rounded-[26px] border border-white/10 bg-white/[0.03] p-4">
-          <div className="mb-3 flex items-center gap-2 text-sm font-medium text-white">
-            <Eye className="h-4 w-4 text-[#7bc3ff]" />
-            Contenu
-          </div>
+      {bodyHtml && (
+        <div className="rounded-[4px] border border-[#141433] bg-[#25254D] p-3">
+          <p className="text-xs font-bold uppercase text-white">Contenu</p>
           <div
-            className="prose prose-sm prose-invert max-w-none rounded-[18px] border border-white/6 bg-black/20 p-4"
+            className="prose prose-sm prose-invert mt-2 max-w-none rounded-[4px] border border-[#141433] bg-[#1F1F3E] p-4"
             dangerouslySetInnerHTML={{ __html: bodyHtml || "<em>Aucun contenu</em>" }}
           />
-        </section>
-      ) : null}
+        </div>
+      )}
     </div>
   );
 }
@@ -653,22 +605,22 @@ function EditForm({
 }: {
   contentType: ContentType;
   formState: Record<string, string | boolean>;
-  setFormState: React.Dispatch<React.SetStateAction<Record<string, string | boolean>>>;
+  setFormState: Dispatch<SetStateAction<Record<string, string | boolean>>>;
 }) {
   const updateField = (key: string, value: string | boolean) => {
     setFormState((current) => ({ ...current, [key]: value }));
   };
 
   return (
-    <div className="space-y-5">
-      <section className="rounded-[26px] border border-white/10 bg-white/[0.03] p-4">
+    <div className="space-y-4">
+      <div className="rounded-[4px] border border-[#141433] bg-[#25254D] p-4">
         <div className="grid gap-4 lg:grid-cols-2">
           {(contentType === "topics" || contentType === "articles" || contentType === "stories") && (
             <Field label="Titre">
               <Input
                 value={(formState.titulo as string) || ""}
                 onChange={(event) => updateField("titulo", event.target.value)}
-                className="h-11 rounded-2xl border-white/10 bg-black/20 text-white"
+                className="h-[40px] rounded-[4px] border-[#141433] bg-[#1F1F3E] text-white"
               />
             </Field>
           )}
@@ -678,7 +630,7 @@ function EditForm({
               <Input
                 value={(formState.descricao as string) || ""}
                 onChange={(event) => updateField("descricao", event.target.value)}
-                className="h-11 rounded-2xl border-white/10 bg-black/20 text-white"
+                className="h-[40px] rounded-[4px] border-[#141433] bg-[#1F1F3E] text-white"
               />
             </Field>
           )}
@@ -688,7 +640,7 @@ function EditForm({
               <Input
                 value={(formState.imagem as string) || ""}
                 onChange={(event) => updateField("imagem", event.target.value)}
-                className="h-11 rounded-2xl border-white/10 bg-black/20 text-white"
+                className="h-[40px] rounded-[4px] border-[#141433] bg-[#1F1F3E] text-white"
               />
             </Field>
           )}
@@ -696,44 +648,35 @@ function EditForm({
           {contentType === "stories" && (
             <Field label="Statut">
               <select
-                className="flex h-11 w-full rounded-2xl border border-white/10 bg-black/20 px-4 text-sm text-white outline-none"
+                className="flex h-[40px] w-full rounded-[4px] border border-[#141433] bg-[#1F1F3E] px-3 text-sm text-white outline-none"
                 value={(formState.status as string) || "public"}
                 onChange={(event) => updateField("status", event.target.value)}
               >
-                <option value="public" className="bg-[#141433]">
-                  Public
-                </option>
-                <option value="hidden" className="bg-[#141433]">
-                  Cache
-                </option>
-                <option value="draft" className="bg-[#141433]">
-                  Brouillon
-                </option>
+                <option value="public" className="bg-[#141433]">Public</option>
+                <option value="hidden" className="bg-[#141433]">Cache</option>
+                <option value="draft" className="bg-[#141433]">Brouillon</option>
               </select>
             </Field>
           )}
         </div>
 
-        {contentType === "topics" ? (
+        {contentType === "topics" && (
           <div className="mt-4 flex flex-wrap gap-6">
-            <label className="flex items-center gap-3 text-sm text-white/78">
+            <label className="flex items-center gap-2 text-sm text-[color:var(--foreground)]/75">
               <Checkbox checked={!!formState.fixo} onCheckedChange={(value) => updateField("fixo", !!value)} />
               Epingle
             </label>
-            <label className="flex items-center gap-3 text-sm text-white/78">
+            <label className="flex items-center gap-2 text-sm text-[color:var(--foreground)]/75">
               <Checkbox checked={!!formState.fechado} onCheckedChange={(value) => updateField("fechado", !!value)} />
               Ferme
             </label>
           </div>
-        ) : null}
-      </section>
+        )}
+      </div>
 
-      {contentType !== "stories" ? (
-        <section className="rounded-[26px] border border-white/10 bg-white/[0.03] p-4">
-          <div className="mb-3 flex items-center gap-2 text-sm font-medium text-white">
-            <Pencil className="h-4 w-4 text-[#7bc3ff]" />
-            Edition du contenu
-          </div>
+      {contentType !== "stories" && (
+        <div className="rounded-[4px] border border-[#141433] bg-[#25254D] p-4">
+          <p className="mb-3 text-xs font-bold uppercase text-white">Edition du contenu</p>
           <AdminRichEditor
             value={
               contentType === "articles"
@@ -752,16 +695,16 @@ function EditForm({
               updateField(fieldName, html);
             }}
           />
-        </section>
-      ) : null}
+        </div>
+      )}
     </div>
   );
 }
 
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
+function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
-    <div className="space-y-2">
-      <Label className="text-xs uppercase tracking-[0.18em] text-white/45">{label}</Label>
+    <div className="space-y-1.5">
+      <Label className="text-[10px] font-bold uppercase tracking-[0.1em] text-[color:var(--foreground)]/50">{label}</Label>
       {children}
     </div>
   );
@@ -770,14 +713,13 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
 function StatusBadges({ item, contentType }: { item: ContentItem; contentType: ContentType }) {
   if (contentType === "topics") {
     return (
-      <div className="flex flex-wrap items-center gap-1.5">
-        {(item as AdminTopic).fixo ? (
-          <Badge className="border-0 bg-[#ffd722]/14 text-[#ffd772]">
-            <Pin className="mr-1 h-3 w-3" />
-            Epingle
-          </Badge>
-        ) : null}
-        {(item as AdminTopic).fechado ? <Badge className="border-0 bg-white/10 text-white/72">Ferme</Badge> : null}
+      <div className="mt-1 flex flex-wrap items-center gap-1">
+        {(item as AdminTopic).fixo && (
+          <Badge className="border-0 bg-[#FFC800]/15 text-[10px] text-[#FFC800]">Epingle</Badge>
+        )}
+        {(item as AdminTopic).fechado && (
+          <Badge className="border-0 bg-[#25254D] text-[10px] text-[color:var(--foreground)]/60">Ferme</Badge>
+        )}
       </div>
     );
   }
@@ -785,20 +727,43 @@ function StatusBadges({ item, contentType }: { item: ContentItem; contentType: C
   if (contentType === "stories") {
     const status = (item as AdminStory).status || "public";
     return (
-      <Badge className={cn("border-0", status === "public" ? "bg-[#67d88b]/15 text-[#67d88b]" : "bg-white/10 text-white/72")}>
-        {status}
-      </Badge>
+      <div className="mt-1">
+        <Badge
+          className={cn(
+            "border-0 text-[10px]",
+            status === "public"
+              ? "bg-green-500/15 text-green-400"
+              : "bg-[#25254D] text-[color:var(--foreground)]/60",
+          )}
+        >
+          {status}
+        </Badge>
+      </div>
     );
   }
 
   return null;
 }
 
-function stripHtml(value?: string | null) {
-  return String(value || "")
-    .replace(/<[^>]+>/g, " ")
-    .replace(/\s+/g, " ")
-    .trim();
+function getItemTitle(item: ContentItem, contentType: ContentType, topicTitleById: Record<number, string>) {
+  if (contentType === "topics") return (item as AdminTopic).titulo || "(sans titre)";
+  if (contentType === "articles") return (item as AdminArticle).titulo || "(sans titre)";
+  if (contentType === "posts") {
+    return topicTitleById[(item as AdminPost).id_topico ?? 0] || `Sujet #${(item as AdminPost).id_topico}`;
+  }
+  if (contentType === "forumComments") return `Com. sujet #${(item as AdminForumComment).id_forum}`;
+  if (contentType === "newsComments") return `Com. article #${(item as AdminNewsComment).id_noticia}`;
+  return (item as AdminStory).titulo || `Story #${(item as AdminStory).id}`;
+}
+
+function resolveItemDate(item: ContentItem) {
+  return (
+    (item as { data?: string | null }).data ||
+    (item as { date_created?: string | null }).date_created ||
+    (((item as { dta?: number | null }).dta ?? 0) > 0
+      ? new Date(((item as { dta?: number | null }).dta ?? 0) * 1000).toISOString()
+      : undefined)
+  );
 }
 
 function resolveAssetUrl(value?: string | null) {

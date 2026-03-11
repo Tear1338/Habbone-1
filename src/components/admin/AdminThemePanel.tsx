@@ -117,37 +117,38 @@ export default function AdminThemePanel() {
   }
 
   return (
-    <div className="space-y-6">
-      <section className="rounded-xl border border-[color:var(--bg-700)]/50 bg-[color:var(--bg-700)]/35 p-5">
-        <div className="mb-3">
-          <h3 className="text-sm font-semibold uppercase tracking-wide opacity-75">Apercu</h3>
-          <p className="text-sm opacity-70">Voici le rendu du bloc logo du header.</p>
-        </div>
-        <div className="rounded-lg border border-[color:var(--bg-700)]/60 p-4" style={previewStyle}>
+    <div className="space-y-5">
+      {/* Preview */}
+      <div className="rounded-[4px] border border-[#141433] bg-[#25254D] p-4">
+        <p className="text-xs font-bold uppercase tracking-[0.08em] text-white">Apercu du header</p>
+        <div className="mt-3 rounded-[4px] border border-[#141433] p-4" style={previewStyle}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={settings.headerLogoUrl}
             alt="Logo header"
-            className="mx-auto block h-auto max-h-36 max-w-full"
+            className="mx-auto block h-auto max-h-28 max-w-full"
           />
         </div>
-      </section>
+      </div>
 
-      <section className="grid gap-5 md:grid-cols-2">
-        <div className="space-y-2">
-          <Label htmlFor="theme-logo-url">URL du logo</Label>
-          <Input
-            id="theme-logo-url"
-            value={settings.headerLogoUrl}
-            onChange={(event) =>
-              setSettings((prev) => ({
-                ...prev,
-                headerLogoUrl: event.target.value,
-              }))
-            }
-            placeholder="/img/mon-logo.gif"
-            className="border-[color:var(--bg-600)]/70 bg-[color:var(--bg-800)]/30"
-          />
+      {/* Settings */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="theme-logo-url" className="text-[10px] font-bold uppercase tracking-[0.1em] text-[color:var(--foreground)]/50">URL du logo</Label>
+            <Input
+              id="theme-logo-url"
+              value={settings.headerLogoUrl}
+              onChange={(event) =>
+                setSettings((prev) => ({
+                  ...prev,
+                  headerLogoUrl: event.target.value,
+                }))
+              }
+              placeholder="/img/mon-logo.gif"
+              className="h-[40px] rounded-[4px] border-[#141433] bg-[#1F1F3E] text-white"
+            />
+          </div>
           <div className="flex items-center gap-2">
             <input
               ref={logoInputRef}
@@ -161,56 +162,60 @@ export default function AdminThemePanel() {
             />
             <Button
               type="button"
-              variant="secondary"
               onClick={() => logoInputRef.current?.click()}
               disabled={uploading === "logo"}
+              className="h-[36px] rounded-[4px] border border-[#141433] bg-[#25254D] text-xs font-bold uppercase text-white hover:bg-[#303060]"
             >
               {uploading === "logo" ? "Upload..." : "Importer logo"}
             </Button>
           </div>
         </div>
 
-        <div className="space-y-2">
-          <Label htmlFor="theme-bg-color">Couleur de fond</Label>
-          <div className="flex items-center gap-2">
-            <Input
-              id="theme-bg-color"
-              type="color"
-              value={colorInputValue}
-              onChange={(event) =>
-                setSettings((prev) => ({
-                  ...prev,
-                  headerBackgroundColor: event.target.value,
-                }))
-              }
-              className="h-11 w-16 border-[color:var(--bg-600)]/70 bg-[color:var(--bg-800)]/30 p-1"
-            />
-            <Input
-              value={settings.headerBackgroundColor}
-              onChange={(event) =>
-                setSettings((prev) => ({
-                  ...prev,
-                  headerBackgroundColor: event.target.value,
-                }))
-              }
-              className="border-[color:var(--bg-600)]/70 bg-[color:var(--bg-800)]/30"
-              placeholder="#204E84"
-            />
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <Label htmlFor="theme-bg-color" className="text-[10px] font-bold uppercase tracking-[0.1em] text-[color:var(--foreground)]/50">Couleur de fond</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                id="theme-bg-color"
+                type="color"
+                value={colorInputValue}
+                onChange={(event) =>
+                  setSettings((prev) => ({
+                    ...prev,
+                    headerBackgroundColor: event.target.value,
+                  }))
+                }
+                className="h-[40px] w-14 rounded-[4px] border-[#141433] bg-[#1F1F3E] p-1"
+              />
+              <Input
+                value={settings.headerBackgroundColor}
+                onChange={(event) =>
+                  setSettings((prev) => ({
+                    ...prev,
+                    headerBackgroundColor: event.target.value,
+                  }))
+                }
+                className="h-[40px] rounded-[4px] border-[#141433] bg-[#1F1F3E] text-white"
+                placeholder="#204E84"
+              />
+            </div>
           </div>
 
-          <Label htmlFor="theme-bg-url">Image de fond (optionnel)</Label>
-          <Input
-            id="theme-bg-url"
-            value={settings.headerBackgroundImageUrl ?? ""}
-            onChange={(event) =>
-              setSettings((prev) => ({
-                ...prev,
-                headerBackgroundImageUrl: event.target.value || null,
-              }))
-            }
-            placeholder="/uploads/theme/background.jpg"
-            className="border-[color:var(--bg-600)]/70 bg-[color:var(--bg-800)]/30"
-          />
+          <div className="space-y-1.5">
+            <Label htmlFor="theme-bg-url" className="text-[10px] font-bold uppercase tracking-[0.1em] text-[color:var(--foreground)]/50">Image de fond (optionnel)</Label>
+            <Input
+              id="theme-bg-url"
+              value={settings.headerBackgroundImageUrl ?? ""}
+              onChange={(event) =>
+                setSettings((prev) => ({
+                  ...prev,
+                  headerBackgroundImageUrl: event.target.value || null,
+                }))
+              }
+              placeholder="/uploads/theme/background.jpg"
+              className="h-[40px] rounded-[4px] border-[#141433] bg-[#1F1F3E] text-white"
+            />
+          </div>
           <div className="flex items-center gap-2">
             <input
               ref={backgroundInputRef}
@@ -224,34 +229,35 @@ export default function AdminThemePanel() {
             />
             <Button
               type="button"
-              variant="secondary"
               onClick={() => backgroundInputRef.current?.click()}
               disabled={uploading === "background"}
+              className="h-[36px] rounded-[4px] border border-[#141433] bg-[#25254D] text-xs font-bold uppercase text-white hover:bg-[#303060]"
             >
               {uploading === "background" ? "Upload..." : "Importer fond"}
             </Button>
             <Button
               type="button"
-              variant="ghost"
               onClick={() =>
                 setSettings((prev) => ({
                   ...prev,
                   headerBackgroundImageUrl: null,
                 }))
               }
+              className="h-[36px] rounded-[4px] border border-[#141433] bg-[#25254D] text-xs text-[color:var(--foreground)]/60 hover:bg-[#303060] hover:text-white"
             >
               Retirer image
             </Button>
           </div>
         </div>
-      </section>
+      </div>
 
-      <div className="flex flex-col gap-2 sm:flex-row sm:justify-end">
+      {/* Actions */}
+      <div className="flex gap-2 sm:justify-end">
         <Button
           type="button"
-          variant="secondary"
           disabled={saving || loading}
           onClick={() => void saveSettings(DEFAULT_THEME_SETTINGS)}
+          className="h-[36px] rounded-[4px] border border-[#141433] bg-[#25254D] text-xs font-bold uppercase text-white hover:bg-[#303060]"
         >
           Valeurs par defaut
         </Button>
@@ -259,12 +265,13 @@ export default function AdminThemePanel() {
           type="button"
           disabled={saving || loading}
           onClick={() => void saveSettings(settings)}
+          className="h-[36px] rounded-[4px] bg-[#2596FF] text-xs font-bold uppercase text-white hover:bg-[#2976E8]"
         >
-          {saving ? "Enregistrement..." : "Enregistrer"}
+          {saving ? "..." : "Enregistrer"}
         </Button>
       </div>
 
-      {loading ? <p className="text-sm opacity-70">Chargement...</p> : null}
+      {loading && <p className="text-xs text-[color:var(--foreground)]/50">Chargement...</p>}
     </div>
   );
 }

@@ -15,7 +15,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { ChevronDown, ChevronRight, Shield, UsersRound } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 
 type Role = {
   id: string;
@@ -26,14 +26,6 @@ type Role = {
 };
 
 type EditableRole = Pick<Role, "id" | "name" | "description">;
-
-type StatTone = "indigo" | "emerald" | "sky";
-
-const STAT_STYLES: Record<StatTone, { bg: string; text: string }> = {
-  indigo: { bg: "from-indigo-500/12 via-indigo-500/4 to-transparent", text: "text-indigo-100" },
-  emerald: { bg: "from-emerald-500/12 via-emerald-500/4 to-transparent", text: "text-emerald-100" },
-  sky: { bg: "from-sky-500/12 via-sky-500/4 to-transparent", text: "text-sky-100" },
-};
 
 export default function AdminRolesPanel() {
   const [roles, setRoles] = useState<Role[]>([]);
@@ -66,9 +58,7 @@ export default function AdminRolesPanel() {
     }
   };
 
-  const totalRoles = roles.length;
   const adminCount = useMemo(() => roles.filter((r) => r.admin_access).length, [roles]);
-  const appCount = useMemo(() => roles.filter((r) => r.app_access).length, [roles]);
   const hasAdminRoles = adminCount > 0;
 
   const handleCreateRole = async () => {
@@ -184,139 +174,117 @@ export default function AdminRolesPanel() {
   };
 
   return (
-    <div className="space-y-8">
-      <header className="space-y-4">
-        <div className="flex items-center gap-3 text-xs uppercase tracking-wide opacity-60">
-          <span className="flex items-center gap-1 text-[color:var(--foreground)]/60">
-            <Shield className="h-4 w-4" />
-            Admin
-          </span>
-          <ChevronRight className="h-3 w-3" />
-          <span>Parametres</span>
-          <ChevronRight className="h-3 w-3" />
-          <span>Roles & acces</span>
-        </div>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h1 className="text-xl font-semibold">Roles & acces</h1>
-            <p className="text-sm opacity-70">
-              Creez, editez ou ajustez les droits attribues aux roles Directus.
-            </p>
-          </div>
-        </div>
-        <div className="grid gap-3 sm:grid-cols-3">
-          <StatTile icon={<UsersRound className="h-4 w-4" />} label="Roles" value={totalRoles} tone="indigo" />
-          <StatTile icon={<Shield className="h-4 w-4" />} label="Acces admin" value={adminCount} tone="emerald" />
-          <StatTile icon={<UsersRound className="h-4 w-4" />} label="Acces application" value={appCount} tone="sky" />
-        </div>
-      </header>
+    <div className="space-y-5">
+      {/* Stats */}
+      <div className="flex flex-wrap gap-3 text-xs text-[color:var(--foreground)]/55">
+        <span>{roles.length} role(s)</span>
+        <span>-</span>
+        <span>{adminCount} avec acces admin</span>
+      </div>
 
-      <section className="rounded-xl border border-[color:var(--bg-700)]/45 bg-[color:var(--bg-700)]/35 backdrop-blur px-6 py-5 shadow-[0_20px_60px_-40px_rgba(0,0,0,0.7)]">
+      {/* Create new role */}
+      <div className="rounded-[4px] border border-[#141433] bg-[#25254D] p-4">
         <button
           type="button"
           onClick={() => setShowCreate((prev) => !prev)}
           className="flex w-full items-center justify-between gap-2 text-left"
         >
           <div>
-            <h2 className="text-lg font-semibold">Nouveau role</h2>
-            <p className="text-sm opacity-70">Ajoutez un role puis choisissez les acces associes.</p>
+            <h2 className="text-sm font-bold uppercase tracking-[0.08em] text-white">Nouveau role</h2>
+            <p className="text-xs text-[color:var(--foreground)]/55">Creer un role et definir ses acces.</p>
           </div>
           <ChevronDown
-            className={`h-5 w-5 opacity-70 transition-transform ${showCreate ? "rotate-180" : ""}`}
+            className={`h-4 w-4 text-[color:var(--foreground)]/50 transition-transform ${showCreate ? "rotate-180" : ""}`}
           />
         </button>
 
         {showCreate && (
-          <div className="mt-4 grid gap-4 border-t border-[color:var(--bg-700)]/40 pt-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="roleName">Nom du role</Label>
+          <div className="mt-4 grid gap-3 border-t border-[#141433] pt-4 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="roleName" className="text-[10px] font-bold uppercase tracking-[0.1em] text-[color:var(--foreground)]/50">Nom</Label>
               <Input
                 id="roleName"
                 placeholder="Ex. Responsable"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="border-[color:var(--bg-600)]/70 bg-[color:var(--bg-800)]/30 focus-visible:border-[color:var(--violet-400,#a855f7)]/60 focus-visible:ring-2 focus-visible:ring-[color:var(--violet-400,#a855f7)]/40"
+                className="h-[40px] rounded-[4px] border-[#141433] bg-[#1F1F3E] text-white"
               />
             </div>
-            <div className="space-y-2 sm:col-span-1">
-              <Label htmlFor="roleDescription">Description</Label>
+            <div className="space-y-1.5">
+              <Label htmlFor="roleDescription" className="text-[10px] font-bold uppercase tracking-[0.1em] text-[color:var(--foreground)]/50">Description</Label>
               <Input
                 id="roleDescription"
                 placeholder="Resume des responsabilites"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                className="border-[color:var(--bg-600)]/70 bg-[color:var(--bg-800)]/30 focus-visible:border-[color:var(--violet-400,#a855f7)]/60 focus-visible:ring-2 focus-visible:ring-[color:var(--violet-400,#a855f7)]/40"
+                className="h-[40px] rounded-[4px] border-[#141433] bg-[#1F1F3E] text-white"
               />
             </div>
-            <div className="grid gap-3 sm:col-span-2">
+            <div className="grid gap-2 sm:col-span-2">
               <ToggleRow
                 label="Acces administrateur"
-                helper="Donne la main sur tout le back-office."
+                helper="Acces complet au back-office."
                 value={adminAccess}
                 onChange={setAdminAccess}
               />
               <ToggleRow
                 label="Acces application"
-                helper="Autorise les outils applicatifs internes."
+                helper="Outils applicatifs internes."
                 value={appAccess}
                 onChange={setAppAccess}
               />
             </div>
-            <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:col-span-2">
+            <div className="flex gap-2 sm:col-span-2 sm:justify-end">
               <Button
-                variant="secondary"
+                variant="outline"
                 onClick={handleSeedRoles}
                 disabled={loading || seeding}
-                aria-busy={seeding}
+                className="h-[36px] rounded-[4px] border-[#141433] bg-[#1F1F3E] text-xs font-bold uppercase text-white hover:bg-[#303060]"
               >
                 {seeding ? "Creation..." : "Roles par defaut"}
               </Button>
-              <Button onClick={handleCreateRole} disabled={creating || !name.trim()} aria-busy={creating}>
-                {creating ? "Enregistrement..." : "Creer le role"}
+              <Button
+                onClick={handleCreateRole}
+                disabled={creating || !name.trim()}
+                className="h-[36px] rounded-[4px] bg-[#2596FF] text-xs font-bold uppercase text-white hover:bg-[#2976E8]"
+              >
+                {creating ? "..." : "Creer le role"}
               </Button>
             </div>
           </div>
         )}
-      </section>
+      </div>
 
-      <section className="space-y-4">
-        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-          <div>
-            <h2 className="text-lg font-semibold">Roles existants</h2>
-            <p className="text-sm opacity-70">
-              Activez ou desactivez les acces en un clic, renommez et documentez les roles.
-            </p>
+      {/* Existing roles */}
+      <div className="space-y-2">
+        <p className="text-xs font-bold uppercase tracking-[0.08em] text-[color:var(--foreground)]/50">
+          {loading ? "Chargement..." : `${roles.length} role(s) existant(s)`}
+        </p>
+
+        {roles.map((role) => (
+          <RoleCard key={role.id} role={role} onSaveAccess={handleSaveAccess} onEdit={openEditDialog} />
+        ))}
+
+        {!roles.length && !loading && (
+          <div className="flex flex-col items-center justify-center gap-2 rounded-[4px] border border-dashed border-[#141433] p-8 text-center">
+            <p className="text-sm text-[color:var(--foreground)]/55">Aucun role. Creez-en un ou importez les roles par defaut.</p>
           </div>
-          <span className="text-xs uppercase tracking-wide opacity-60">
-            {loading ? "Chargement..." : `${roles.length} role${roles.length > 1 ? "s" : ""}`}
-          </span>
-        </div>
+        )}
+      </div>
 
-        <div className="space-y-4">
-          {roles.map((role) => (
-            <RoleCard key={role.id} role={role} onSaveAccess={handleSaveAccess} onEdit={openEditDialog} />
-          ))}
-
-          {!roles.length && !loading ? (
-            <div className="rounded-lg border border-dashed border-[color:var(--bg-700)]/60 p-6 text-center text-sm opacity-70">
-              Aucun role enregistre. Creez un nouveau role ou importez les roles par defaut.
-            </div>
-          ) : null}
-        </div>
-      </section>
-
+      {/* Edit dialog */}
       <Dialog open={!!editingRole} onOpenChange={(open) => !open && setEditingRole(null)}>
-        <DialogContent className="max-w-lg border border-[color:var(--bg-700)]/60 bg-[color:var(--bg-700)]/90 px-6 py-6 text-[color:var(--foreground)] shadow-[0_28px_75px_-42px_rgba(0,0,0,0.75)]">
+        <DialogContent className="max-w-lg rounded-[4px] border border-[#141433] bg-[#1F1F3E] text-[color:var(--foreground)]">
           <DialogHeader>
-            <DialogTitle>Renommer le role</DialogTitle>
-            <DialogDescription>
-              Modifiez le nom ou la description. Les acces restent geres depuis la liste principale.
+            <DialogTitle className="text-white">Renommer le role</DialogTitle>
+            <DialogDescription className="text-[color:var(--foreground)]/55">
+              Modifiez le nom ou la description.
             </DialogDescription>
           </DialogHeader>
-          {editingRole ? (
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="editRoleName">Nom du role</Label>
+          {editingRole && (
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="editRoleName" className="text-[10px] font-bold uppercase tracking-[0.1em] text-[color:var(--foreground)]/50">Nom</Label>
                 <Input
                   id="editRoleName"
                   value={editingRole.name}
@@ -325,11 +293,11 @@ export default function AdminRolesPanel() {
                       prev ? { ...prev, name: e.target.value } : prev
                     )
                   }
-                  className="border-[color:var(--bg-600)]/70 bg-[color:var(--bg-800)]/30 focus-visible:border-[color:var(--violet-400,#a855f7)]/60 focus-visible:ring-2 focus-visible:ring-[color:var(--violet-400,#a855f7)]/40"
+                  className="h-[40px] rounded-[4px] border-[#141433] bg-[#25254D] text-white"
                 />
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="editRoleDescription">Description</Label>
+              <div className="space-y-1.5">
+                <Label htmlFor="editRoleDescription" className="text-[10px] font-bold uppercase tracking-[0.1em] text-[color:var(--foreground)]/50">Description</Label>
                 <Input
                   id="editRoleDescription"
                   value={editingRole.description ?? ""}
@@ -339,27 +307,35 @@ export default function AdminRolesPanel() {
                     )
                   }
                   placeholder="Resume des responsabilites"
-                  className="border-[color:var(--bg-600)]/70 bg-[color:var(--bg-800)]/30 focus-visible:border-[color:var(--violet-400,#a855f7)]/60 focus-visible:ring-2 focus-visible:ring-[color:var(--violet-400,#a855f7)]/40"
+                  className="h-[40px] rounded-[4px] border-[#141433] bg-[#25254D] text-white"
                 />
               </div>
             </div>
-          ) : null}
+          )}
           <DialogFooter>
-            <Button variant="ghost" onClick={() => setEditingRole(null)}>
+            <Button
+              variant="outline"
+              onClick={() => setEditingRole(null)}
+              className="h-[36px] rounded-[4px] border-[#141433] bg-[#25254D] text-white hover:bg-[#303060]"
+            >
               Annuler
             </Button>
-            <Button onClick={handleSaveEdition} disabled={editingLoading || !editingRole?.name.trim()} aria-busy={editingLoading}>
-              {editingLoading ? "Enregistrement..." : "Enregistrer"}
+            <Button
+              onClick={handleSaveEdition}
+              disabled={editingLoading || !editingRole?.name.trim()}
+              className="h-[36px] rounded-[4px] bg-[#2596FF] text-white hover:bg-[#2976E8]"
+            >
+              {editingLoading ? "..." : "Enregistrer"}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {!hasAdminRoles && !loading ? (
-        <div className="rounded-md border border-amber-500/45 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-          Aucun role administrateur configure : activez l'acces admin sur au moins un role pour ne pas bloquer l'equipe.
+      {!hasAdminRoles && !loading && (
+        <div className="rounded-[4px] border border-[#FFC800]/30 bg-[#FFC800]/10 px-4 py-3 text-sm text-[#FFC800]">
+          Aucun role administrateur configure. Activez l&apos;acces admin sur au moins un role.
         </div>
-      ) : null}
+      )}
     </div>
   );
 }
@@ -396,54 +372,68 @@ function RoleCard({
   };
 
   return (
-    <article className="space-y-4 rounded-xl border border-[color:var(--bg-700)]/40 bg-[color:var(--bg-700)]/30 p-6 shadow-[0_24px_65px_-40px_rgba(0,0,0,0.65)] transition hover:border-[color:var(--bg-600)]/60">
+    <article className="rounded-[4px] border border-[#141433] bg-[#25254D] p-4">
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h3 className="text-sm font-semibold leading-tight">{role.name || "Sans nom"}</h3>
-          <p className="text-sm opacity-70">
-            {role.description || "Pas encore de description."}
+          <h3 className="text-sm font-bold text-white">{role.name || "Sans nom"}</h3>
+          <p className="text-xs text-[color:var(--foreground)]/55">
+            {role.description || "Pas de description."}
           </p>
         </div>
-        <div className="flex flex-wrap gap-2">
-          <Badge variant={role.admin_access ? "default" : "secondary"}>
-            {role.admin_access ? "Acces admin" : "Pas d'acces admin"}
+        <div className="flex flex-wrap gap-1.5">
+          <Badge className={role.admin_access ? "border-0 bg-[#2596FF]/15 text-[#2596FF]" : "border-0 bg-[#25254D] text-[color:var(--foreground)]/50"}>
+            {role.admin_access ? "Admin" : "Pas admin"}
           </Badge>
-          <Badge variant={role.app_access ? "outline" : "secondary"}>
-            {role.app_access ? "Acces app" : "App desactivee"}
+          <Badge className={role.app_access ? "border-0 bg-green-500/15 text-green-400" : "border-0 bg-[#25254D] text-[color:var(--foreground)]/50"}>
+            {role.app_access ? "App" : "Pas app"}
           </Badge>
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-2">
+      <div className="mt-3 grid gap-2 sm:grid-cols-2">
         <ToggleRow
-          label="Activer l'acces admin"
-          helper="Autorise la gestion du back-office."
+          label="Acces admin"
           value={admin}
           onChange={setAdmin}
         />
         <ToggleRow
-          label="Autoriser l'acces application"
-          helper="Donne acces aux outils applicatifs."
+          label="Acces app"
           value={app}
           onChange={setApp}
         />
       </div>
 
-      <div className="flex flex-col gap-2 text-xs opacity-60 sm:flex-row sm:items-center sm:justify-between">
-        <span>ID : {role.id}</span>
-        <div className="flex items-center gap-2">
+      <div className="mt-3 flex items-center justify-between text-xs text-[color:var(--foreground)]/40">
+        <span>ID: {role.id}</span>
+        <div className="flex gap-2">
           {dirty ? (
             <>
-              <Button size="sm" variant="secondary" onClick={handleReset} disabled={saving}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleReset}
+                disabled={saving}
+                className="h-7 rounded-[4px] border-[#141433] bg-[#1F1F3E] text-xs text-white hover:bg-[#303060]"
+              >
                 Annuler
               </Button>
-              <Button size="sm" onClick={handleSave} disabled={saving} aria-busy={saving}>
-                {saving ? "Sauvegarde..." : "Enregistrer"}
+              <Button
+                size="sm"
+                onClick={handleSave}
+                disabled={saving}
+                className="h-7 rounded-[4px] bg-[#2596FF] text-xs text-white hover:bg-[#2976E8]"
+              >
+                {saving ? "..." : "Sauver"}
               </Button>
             </>
           ) : (
-            <Button size="sm" variant="ghost" onClick={() => onEdit(role)}>
-              Renommer / description
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => onEdit(role)}
+              className="h-7 rounded-[4px] border-[#141433] bg-[#1F1F3E] text-xs text-white hover:bg-[#303060]"
+            >
+              Renommer
             </Button>
           )}
         </div>
@@ -464,35 +454,12 @@ function ToggleRow({
   onChange: (value: boolean) => void;
 }) {
   return (
-    <div className="flex items-center justify-between gap-3 rounded-lg border border-[color:var(--bg-700)]/25 bg-[color:var(--bg-700)]/30 px-4 py-3 shadow-[0_12px_32px_-28px_rgba(0,0,0,0.65)]">
-      <div className="space-y-1">
-        <p className="text-sm font-medium leading-tight">{label}</p>
-        {helper ? <p className="text-xs opacity-60">{helper}</p> : null}
+    <div className="flex items-center justify-between gap-3 rounded-[4px] border border-[#141433] bg-[#1F1F3E] px-3 py-2.5">
+      <div>
+        <p className="text-xs font-semibold text-white">{label}</p>
+        {helper && <p className="text-[10px] text-[color:var(--foreground)]/45">{helper}</p>}
       </div>
       <Switch checked={value} onCheckedChange={onChange} />
-    </div>
-  );
-}
-
-function StatTile({
-  label,
-  value,
-  tone,
-  icon,
-}: {
-  label: string;
-  value: number;
-  tone: StatTone;
-  icon: React.ReactNode;
-}) {
-  const palette = STAT_STYLES[tone];
-  return (
-    <div className={`rounded-xl border border-[color:var(--bg-700)]/60 bg-gradient-to-br ${palette.bg} p-4 shadow-[0_16px_55px_-40px_rgba(0,0,0,0.6)]`}>
-      <div className="flex items-center justify-between text-xs uppercase tracking-wide text-[color:var(--foreground)]/60">
-        <span>{label}</span>
-        <span>{icon}</span>
-      </div>
-      <p className={`text-3xl font-semibold ${palette.text}`}>{value}</p>
     </div>
   );
 }
