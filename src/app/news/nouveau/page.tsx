@@ -15,7 +15,8 @@ export default function NouveauArticlePage() {
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [content, setContent] = useState('')
-  const [imageUrl, setImageUrl] = useState('')
+  const [imageUrl, setImageUrl] = useState('')   // pour l'aperçu
+  const [imageId, setImageId] = useState('')    // UUID pour Directus
   const [uploading, setUploading] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -44,7 +45,7 @@ export default function NouveauArticlePage() {
           titulo: title.trim(),
           descricao: description.trim() || undefined,
           noticia: content,
-          imagem: imageUrl.trim() || undefined,
+          imagem: imageId || imageUrl.trim() || undefined,
         }),
       })
 
@@ -118,7 +119,7 @@ export default function NouveauArticlePage() {
             <input
               type="text"
               value={imageUrl}
-              onChange={(e) => setImageUrl(e.target.value)}
+              onChange={(e) => { setImageUrl(e.target.value); setImageId('') }}
               placeholder="URL ou UUID de l'image..."
               className="h-[45px] flex-1 rounded-[4px] border border-[#141433] bg-[#25254D] px-4 text-[14px] text-[#DDD] placeholder:text-[#BEBECE]/50 focus-visible:border-[#2596FF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2596FF]/25"
             />
@@ -140,8 +141,9 @@ export default function NouveauArticlePage() {
                     formData.set('file', file)
                     const res = await fetch('/api/upload/image', { method: 'POST', body: formData })
                     const data = await res.json()
-                    if (data?.url) {
-                      setImageUrl(data.url)
+                    if (data?.url && data?.id) {
+                      setImageUrl(data.url)   // pour l'aperçu
+                      setImageId(data.id)     // UUID pour Directus
                     } else {
                       setError(data?.error || "Erreur lors de l'upload.")
                     }
