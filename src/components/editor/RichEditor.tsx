@@ -43,13 +43,16 @@ export default function RichEditor({
   initialHTML = "",
   placeholder = "Ecrivez ici... (Ctrl+B/I, Ctrl+K pour lien, etc.)",
   variant = "full",
+  onChange,
 }: {
   name: string;
   initialHTML?: string;
   placeholder?: string;
   variant?: Variant;
+  onChange?: (html: string) => void;
 }) {
   const hiddenRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [html, setHtml] = useState<string>(initialHTML || "");
 
   const extensions: any[] = [
@@ -80,6 +83,7 @@ export default function RichEditor({
       const h = editor.getHTML();
       setHtml(h);
       if (hiddenRef.current) hiddenRef.current.value = h;
+      onChange?.(h);
     },
     editorProps: {
       attributes: {
@@ -135,9 +139,38 @@ export default function RichEditor({
             <ToolbarButton active={editor?.isActive("codeBlock")} label="Bloc code" onClick={toggle(() => editor?.chain().focus().toggleCodeBlock().run())}>
               <CodeIcon className="h-3.5 w-3.5" />
             </ToolbarButton>
-            <ToolbarButton label="Image" onClick={(e) => { e.preventDefault(); const url = prompt("URL de l'image"); if (url) editor?.chain().focus().setImage({ src: url }).run(); }}>
+            <ToolbarButton label="Image (upload)" onClick={(e) => {
+              e.preventDefault();
+              fileInputRef.current?.click();
+            }}>
               <ImageIcon className="h-3.5 w-3.5" />
             </ToolbarButton>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/png,image/jpeg,image/gif,image/webp"
+              className="hidden"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file || !editor) return;
+                e.target.value = '';
+                try {
+                  const formData = new FormData();
+                  formData.set('file', file);
+                  const res = await fetch('/api/upload/image', { method: 'POST', body: formData });
+                  const data = await res.json();
+                  if (data?.url) {
+                    editor.chain().focus().setImage({ src: data.url }).run();
+                  } else {
+                    const fallbackUrl = prompt("Upload échoué. Coller l'URL de l'image manuellement :");
+                    if (fallbackUrl) editor.chain().focus().setImage({ src: fallbackUrl }).run();
+                  }
+                } catch {
+                  const fallbackUrl = prompt("Erreur réseau. Coller l'URL de l'image manuellement :");
+                  if (fallbackUrl) editor.chain().focus().setImage({ src: fallbackUrl }).run();
+                }
+              }}
+            />
             <ToolbarButton active={editor?.isActive("link")} label="Lien (Ctrl+K)" onClick={(e) => { e.preventDefault(); const url = prompt("URL du lien"); if (url) editor?.chain().focus().extendMarkRange("link").setLink({ href: url }).run(); }}>
               <LinkIcon className="h-3.5 w-3.5" />
             </ToolbarButton>

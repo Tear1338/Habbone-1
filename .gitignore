@@ -46,3 +46,4 @@ public/img/*.exe
 # backups
 *.bak
 
+.claude/

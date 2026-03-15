@@ -74,20 +74,28 @@ export default function NewsPageClient({ articles }: { articles: any[] }) {
             </h1>
           </div>
 
-          <div className="relative w-full sm:w-[255px]">
-            <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#BEBECE] material-icons text-[16px]">
-              search
-            </span>
-            <input
-              type="search"
-              value={query}
-              onChange={(event) => {
-                setQuery(event.target.value)
-                setPage(0)
-              }}
-              placeholder="Rechercher un titre"
-              className="h-[40px] w-full rounded-[4px] border border-[#141433] bg-[#25254D] pl-9 pr-3 text-[12px] font-normal text-[#DDD] placeholder:text-[#BEBECE]/60 focus-visible:border-[#2596FF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2596FF]/25"
-            />
+          <div className="flex items-center gap-3">
+            <Link
+              href="/news/nouveau"
+              className="inline-flex h-[40px] shrink-0 items-center rounded-[4px] bg-[#2596FF] px-4 text-[11px] font-bold uppercase tracking-[0.04em] text-white hover:bg-[#2976E8]"
+            >
+              Publier un article
+            </Link>
+            <div className="relative w-full sm:w-[255px]">
+              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-[#BEBECE] material-icons text-[16px]">
+                search
+              </span>
+              <input
+                type="search"
+                value={query}
+                onChange={(event) => {
+                  setQuery(event.target.value)
+                  setPage(0)
+                }}
+                placeholder="Rechercher un titre"
+                className="h-[40px] w-full rounded-[4px] border border-[#141433] bg-[#25254D] pl-9 pr-3 text-[12px] font-normal text-[#DDD] placeholder:text-[#BEBECE]/60 focus-visible:border-[#2596FF] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#2596FF]/25"
+              />
+            </div>
           </div>
         </div>
 

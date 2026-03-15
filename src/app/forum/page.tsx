@@ -265,7 +265,13 @@ export default async function ForumPage({ searchParams }: ForumPageProps) {
 
   return (
     <main className="mx-auto flex w-full max-w-[1200px] flex-col gap-[50px] px-4 py-10 sm:px-8">
-      <div className="flex w-full justify-end">
+      <div className="flex w-full justify-end gap-3">
+        <Link
+          href="/forum/nouveau"
+          className="inline-flex h-[50px] items-center rounded-[4px] bg-[#2596FF] px-5 text-[11px] font-bold uppercase tracking-[0.04em] text-white hover:bg-[#2976E8]"
+        >
+          Nouveau sujet
+        </Link>
         <form className="flex w-full max-w-[560px] flex-col gap-2 sm:flex-row sm:items-center sm:justify-end sm:gap-[5px]">
           {isAllView ? <input type="hidden" name="view" value="all" /> : null}
           <div className="relative w-full sm:max-w-[255px]">

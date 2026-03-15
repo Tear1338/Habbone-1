@@ -29,8 +29,10 @@ export const navigation: NavEntry[] = [
   {
     label: 'EXTRAS',
     children: [
-      { label: 'Poster un sujet', href: '/forum' },
-      { label: 'Habbo Imager', href: '/imager', prefetch: false },
+      { label: 'Changements de pseudo Habbo', href: '/pseudohabbo' },
+      { label: 'Générateur d\'avatar', href: '/imager', prefetch: false },
+      { label: 'Mobis', href: '/mobis' },
+      { label: 'Badges', href: '/badges' },
     ],
   },
   { label: 'Forum', href: '/forum' },

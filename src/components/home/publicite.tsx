@@ -1,15 +1,9 @@
-'use client'
+import { directusService, rItems } from '@/server/directus/client'
+import { mediaUrl } from '@/lib/media-url'
+import PubliciteClient, { type Partner } from './publicite-client'
 
-import Link from 'next/link'
-import { useState } from 'react'
-
-type Partner = {
-  name: string
-  banner: string
-  href: string
-}
-
-const PARTNERS: Partner[] = [
+// Fallback hardcoded partners in case Directus collection doesn't exist
+const FALLBACK_PARTNERS: Partner[] = [
   {
     name: 'Kihabbo, un monde different',
     banner: '/img/partenaire.png',
@@ -22,81 +16,33 @@ const PARTNERS: Partner[] = [
   },
 ]
 
-export default function Publicite() {
-  const [index, setIndex] = useState(0)
+async function fetchPartners(): Promise<Partner[]> {
+  try {
+    const rows = (await directusService.request(
+      rItems('publicites', {
+        fields: ['id', 'name', 'banner', 'href', 'status'],
+        sort: ['-id'],
+        limit: 20,
+        filter: { status: { _eq: 'published' } },
+      } as any),
+    )) as any[]
 
-  const activePartner = PARTNERS[index]
-  const canMove = PARTNERS.length > 1
+    if (!Array.isArray(rows) || rows.length === 0) return FALLBACK_PARTNERS
 
-  const showPrevious = () => {
-    setIndex((current) => (current - 1 + PARTNERS.length) % PARTNERS.length)
+    return rows
+      .map((row: any) => ({
+        name: String(row?.name || row?.nom || '').trim(),
+        banner: mediaUrl(row?.banner || row?.image || ''),
+        href: String(row?.href || row?.url || row?.link || '#').trim(),
+      }))
+      .filter((p) => p.name && p.banner)
+  } catch {
+    // Collection may not exist yet — use fallback
+    return FALLBACK_PARTNERS
   }
+}
 
-  const showNext = () => {
-    setIndex((current) => (current + 1) % PARTNERS.length)
-  }
-
-  return (
-    <section className="w-full">
-      <div className="overflow-hidden rounded-[4px] border border-[#1F1F3E] bg-[#272746]">
-        <header className="flex h-[50px] items-center justify-between px-0">
-          <div className="flex items-center gap-3 pl-5">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/img/contact.png" alt="" className="h-[34px] w-auto image-pixelated" />
-            <h2 className="text-[18px] font-bold uppercase text-[#DDD] [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">
-              Publicite
-            </h2>
-          </div>
-
-          <div className="flex items-center gap-4 pr-0 sm:pr-5">
-            <Link
-              href="/partenaires"
-              className="hidden h-[50px] items-center rounded-[4px] bg-[rgba(255,255,255,0.1)] px-[20px] text-[11px] font-bold uppercase tracking-[0.04em] text-[#DDD] transition hover:bg-[rgba(255,255,255,0.16)] sm:inline-flex"
-            >
-              Devenir partenaire
-            </Link>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                aria-label="Publicite precedente"
-                onClick={showPrevious}
-                disabled={!canMove}
-                className="grid h-[50px] w-[50px] place-items-center rounded-[4px] bg-[rgba(255,255,255,0.1)] text-[#DDD] transition hover:bg-[#2596FF] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <i className="material-icons text-[22px]" aria-hidden>
-                  chevron_left
-                </i>
-              </button>
-              <button
-                type="button"
-                aria-label="Publicite suivante"
-                onClick={showNext}
-                disabled={!canMove}
-                className="grid h-[50px] w-[50px] place-items-center rounded-[4px] bg-[rgba(255,255,255,0.1)] text-[#DDD] transition hover:bg-[#2596FF] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <i className="material-icons text-[22px]" aria-hidden>
-                  chevron_right
-                </i>
-              </button>
-            </div>
-          </div>
-        </header>
-
-        <Link
-          href={activePartner.href}
-          target="_blank"
-          rel="noreferrer"
-          className="relative block h-[242px] overflow-hidden rounded-[4px] border-t border-white/10"
-        >
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={activePartner.banner} alt={activePartner.name} className="h-full w-full object-cover" />
-          <div className="absolute inset-0 shadow-[inset_0_0_0_3px_rgba(255,255,255,0.2)]" />
-          <div className="absolute bottom-[14px] right-[14px] rounded-[4px] bg-[rgba(20,20,51,0.85)] px-[10px] py-[10px] text-[13px] font-bold text-white backdrop-blur-[25px]">
-            {activePartner.name}
-          </div>
-        </Link>
-      </div>
-    </section>
-  )
+export default async function Publicite() {
+  const partners = await fetchPartners()
+  return <PubliciteClient partners={partners} />
 }

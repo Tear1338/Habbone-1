@@ -6,6 +6,12 @@ const HOTEL_BASES: Record<string, string> = {
   fr: 'https://www.habbo.fr',
   com: 'https://www.habbo.com',
   'com.br': 'https://www.habbo.com.br',
+  es: 'https://www.habbo.es',
+  it: 'https://www.habbo.it',
+  de: 'https://www.habbo.de',
+  nl: 'https://www.habbo.nl',
+  fi: 'https://www.habbo.fi',
+  'com.tr': 'https://www.habbo.com.tr',
 };
 
 export function resolveHotelBase(hotel?: string) {

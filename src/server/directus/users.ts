@@ -67,11 +67,23 @@ export function asFalse(v: unknown): boolean {
   return !asTrue(v);
 }
 
-export function normalizeHotelCode(hotel?: string | null): 'fr' | 'com' | 'com.br' {
+export type HabboHotelCode = 'fr' | 'com' | 'com.br' | 'es' | 'it' | 'de' | 'nl' | 'fi' | 'com.tr';
+
+const HOTEL_ALIASES: Record<string, HabboHotelCode> = {
+  fr: 'fr',
+  com: 'com',
+  'com.br': 'com.br', br: 'com.br', combr: 'com.br',
+  es: 'es',
+  it: 'it',
+  de: 'de',
+  nl: 'nl',
+  fi: 'fi',
+  'com.tr': 'com.tr', tr: 'com.tr', comtr: 'com.tr',
+};
+
+export function normalizeHotelCode(hotel?: string | null): HabboHotelCode {
   const value = typeof hotel === 'string' ? hotel.trim().toLowerCase() : '';
-  if (value === 'com') return 'com';
-  if (value === 'com.br' || value === 'br' || value === 'combr') return 'com.br';
-  return 'fr';
+  return HOTEL_ALIASES[value] ?? 'fr';
 }
 
 export async function listUsersByNick(nick: string) {

@@ -8,18 +8,41 @@ type Badge = {
   image: string
 }
 
-const BADGE_API = 'https://www.habboassets.com/api/v1/badges?limit=240'
+type HotelFilter = 'all' | 'fr' | 'com' | 'nl' | 'tr' | 'com.br' | 'it' | 'es' | 'de' | 'fi'
+
+const HOTEL_FILTERS: { value: HotelFilter; label: string }[] = [
+  { value: 'all', label: 'Tous' },
+  { value: 'fr', label: 'FR' },
+  { value: 'com', label: 'COM' },
+  { value: 'com.br', label: 'BR' },
+  { value: 'es', label: 'ES' },
+  { value: 'it', label: 'IT' },
+  { value: 'de', label: 'DE' },
+  { value: 'nl', label: 'NL' },
+  { value: 'fi', label: 'FI' },
+  { value: 'tr', label: 'TR' },
+]
+
+const BADGE_API_BASE = 'https://www.habboassets.com/api/v1/badges'
 const GRID_COLS = 6
 const GRID_ROWS = 6
 const PAGE_SIZE = GRID_COLS * GRID_ROWS
 
-export default function LatestMobis() {
-  const [items, setItems] = useState<Badge[]>([])
+export default function LatestBadges() {
+  const [allBadges, setAllBadges] = useState<Badge[]>([])
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(0)
+  const [hotel, setHotel] = useState<HotelFilter>('all')
 
   useEffect(() => {
-    fetch(BADGE_API)
+    const url = hotel === 'all'
+      ? `${BADGE_API_BASE}?limit=240`
+      : `${BADGE_API_BASE}?limit=240&hotel=${hotel}`
+
+    setLoading(true)
+    setPage(0)
+
+    fetch(url)
       .then((response) => response.json())
       .then((json) => {
         const data = Array.isArray(json?.badges)
@@ -32,12 +55,13 @@ export default function LatestMobis() {
               }))
           : []
 
-        setItems(data)
+        setAllBadges(data)
       })
-      .catch(() => setItems([]))
+      .catch(() => setAllBadges([]))
       .finally(() => setLoading(false))
-  }, [])
+  }, [hotel])
 
+  const items = allBadges
   const pageCount = Math.max(1, Math.ceil(items.length / PAGE_SIZE))
   const clampedPage = Math.min(page, pageCount - 1)
 
@@ -64,9 +88,22 @@ export default function LatestMobis() {
           <h2 className="text-[16px] font-bold uppercase text-white">Derniers Badges</h2>
 
           <div className="flex items-center gap-[5px]">
+            {/* Hotel filter */}
+            <select
+              value={hotel}
+              onChange={(e) => setHotel(e.target.value as HotelFilter)}
+              className="h-[40px] rounded-[3px] border border-[#141433] bg-[#1F1F3E] px-2 text-[11px] font-bold uppercase text-[#DDD] outline-none focus:border-[#2596FF]"
+            >
+              {HOTEL_FILTERS.map((opt) => (
+                <option key={opt.value} value={opt.value} className="bg-[#141433]">
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+
             <button
               type="button"
-              aria-label="Mobis precedents"
+              aria-label="Badges precedents"
               onClick={previousPage}
               disabled={clampedPage === 0}
               className="grid h-[40px] w-[40px] place-items-center rounded-[3px] bg-[#2596FF] text-white transition hover:bg-[#2976E8] disabled:cursor-not-allowed disabled:opacity-50"
@@ -77,7 +114,7 @@ export default function LatestMobis() {
             </button>
             <button
               type="button"
-              aria-label="Mobis suivants"
+              aria-label="Badges suivants"
               onClick={nextPage}
               disabled={clampedPage >= pageCount - 1}
               className="grid h-[40px] w-[40px] place-items-center rounded-[3px] bg-[rgba(255,255,255,0.1)] text-[#DDD] transition hover:bg-[rgba(255,255,255,0.16)] disabled:cursor-not-allowed disabled:opacity-50"
@@ -92,11 +129,11 @@ export default function LatestMobis() {
         <div className="px-[18px] py-[20px]">
           {loading ? (
             <div className="rounded-[4px] border border-dashed border-[#1F1F3E] px-4 py-16 text-center text-xs font-semibold uppercase tracking-[0.08em] text-[#BEBECE]/70">
-              Chargement des mobis...
+              Chargement des badges...
             </div>
           ) : visibleItems.length === 0 ? (
             <div className="rounded-[4px] border border-dashed border-[#1F1F3E] px-4 py-16 text-center text-xs font-semibold uppercase tracking-[0.08em] text-[#BEBECE]/70">
-              Aucun mobi disponible.
+              Aucun badge disponible.
             </div>
           ) : (
             <div className="grid grid-cols-6 gap-[10px]">

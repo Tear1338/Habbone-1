@@ -33,7 +33,7 @@ export const CheckUserQuerySchema = z.object({
     .refine((v) => v === undefined || HabboHotelEnum.options.includes(v as any), 'hotel invalide'),
 })
 
-export const HabboHotelEnum = z.enum(['fr', 'com', 'com.br'])
+export const HabboHotelEnum = z.enum(['fr', 'com', 'com.br', 'es', 'it', 'de', 'nl', 'fi', 'com.tr'])
 
 export const RegisterBodySchema = z.object({
   nick: z.string().trim().min(3, 'nick trop court').max(32, 'nick trop long'),

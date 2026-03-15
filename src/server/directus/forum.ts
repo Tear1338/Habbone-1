@@ -103,6 +103,28 @@ export async function listForumTopicsByAuthorService(author: string, limit = 30)
   return Array.isArray(rows) ? (rows as ForumTopicRecord[]) : [];
 }
 
+export async function createForumTopic(data: {
+  titulo: string;
+  conteudo: string;
+  autor: string;
+  imagem?: string | null;
+  cat_id?: number | string | null;
+}): Promise<ForumTopicRecord> {
+  const payload: any = {
+    titulo: data.titulo,
+    conteudo: data.conteudo,
+    autor: data.autor,
+    imagem: data.imagem ?? null,
+    cat_id: data.cat_id ?? null,
+    data: new Date().toISOString(),
+    status: 'ativo',
+    views: 0,
+    fixo: false,
+    fechado: false,
+  };
+  return directusService.request(cItem('forum_topicos', payload)) as Promise<ForumTopicRecord>;
+}
+
 export async function adminCreateForumPost(data: {
   id_topico: number;
   conteudo: string;

@@ -1,7 +1,7 @@
 export type RegisterPayload = {
   nick: string;
   password: string;
-  hotel: 'fr' | 'com' | 'com.br';
+  hotel: 'fr' | 'com' | 'com.br' | 'es' | 'it' | 'de' | 'nl' | 'fi' | 'com.tr';
   missao?: string;
   email?: string;
 };

@@ -1,11 +1,11 @@
-﻿import { listTeamMembersByRoles } from '@/server/directus/team'
+import { listTeamMembersByRoles } from '@/server/directus/team'
 import { CalendarClock, Twitter } from 'lucide-react'
 
 import { parseTimestamp } from '@/lib/date-utils'
 import { buildHabboAvatarUrl } from '@/lib/habbo-imaging'
 
 export const revalidate = 60
-const TEAM_ROLE = 'Fondateur'
+const TEAM_ROLES = ['Fondateur', 'Administrateur', 'Modérateur', 'Rédacteur', 'Développeur', 'Graphiste']
 
 function habboAvatarUrl(nick: string) {
   return buildHabboAvatarUrl(nick, {
@@ -43,8 +43,12 @@ function resolveTwitterLink(value?: string | null) {
 }
 
 export default async function TeamPage() {
-  const membersByRole = await listTeamMembersByRoles([TEAM_ROLE])
-  const founders = (membersByRole[TEAM_ROLE] ?? []).slice(0, 2)
+  const membersByRole = await listTeamMembersByRoles(TEAM_ROLES)
+
+  // Filter to only roles that have members
+  const activeRoles = TEAM_ROLES.filter(
+    (role) => (membersByRole[role] ?? []).length > 0
+  )
 
   return (
     <main className="mx-auto w-full max-w-[1200px] space-y-3 px-4 py-10 sm:px-6">
@@ -62,62 +66,69 @@ export default async function TeamPage() {
         </div>
       </header>
 
-      <section className="rounded-[4px] border border-[#1F1F3E] bg-[#272746] px-5 py-6">
-        <h2 className="text-[16px] font-bold text-white">Fondateur</h2>
-
-        {founders.length > 0 ? (
-          <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:justify-start md:[grid-template-columns:repeat(2,minmax(0,278px))]">
-            {founders.map((member) => {
-              const twitter = resolveTwitterLink(member.twitter)
-              return (
-                <article
-                  key={`${member.role}-${member.id}`}
-                  className="w-full rounded-[8px] border-2 border-white/10 bg-black/10 px-3 pb-[10px] pt-3"
-                >
-                  <div className="flex items-start gap-2">
-                    <div className="h-[70px] w-[64px] shrink-0 overflow-hidden rounded-[2px]">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={habboAvatarUrl(member.nick)}
-                        alt={member.nick}
-                        className="h-full w-full object-cover image-pixelated"
-                      />
-                    </div>
-
-                    <div className="flex min-w-0 flex-1 flex-col gap-3">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="truncate text-[16px] font-bold text-[#2596FF]">{member.nick}</p>
-                        {twitter ? (
-                          <a
-                            href={twitter}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex h-[31px] w-[31px] shrink-0 items-center justify-center rounded-[4px] bg-[#2596FF] text-white transition hover:bg-[#2976E8]"
-                            aria-label={`Profil Twitter de ${member.nick}`}
-                          >
-                            <Twitter className="h-[15px] w-[15px]" />
-                          </a>
-                        ) : (
-                          <span className="h-[31px] w-[31px] shrink-0 rounded-[4px] bg-white/10" aria-hidden />
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-2 text-[14px] text-[#BEBECE]">
-                        <CalendarClock className="h-[14px] w-[14px] shrink-0" />
-                        <span className="truncate">Dans l&apos;equipe depuis {formatTenure(member.joinedAt)}</span>
-                      </div>
-                    </div>
-                  </div>
-                </article>
-              )
-            })}
-          </div>
-        ) : (
-          <p className="mt-4 rounded-[6px] border border-dashed border-white/15 px-4 py-6 text-center text-sm text-[#BEBECE]">
-            Aucun fondateur reference pour le moment.
+      {activeRoles.length === 0 ? (
+        <section className="rounded-[4px] border border-[#1F1F3E] bg-[#272746] px-5 py-6">
+          <p className="rounded-[6px] border border-dashed border-white/15 px-4 py-6 text-center text-sm text-[#BEBECE]">
+            Aucun membre reference pour le moment.
           </p>
-        )}
-      </section>
+        </section>
+      ) : (
+        activeRoles.map((role) => {
+          const members = membersByRole[role] ?? []
+          return (
+            <section key={role} className="rounded-[4px] border border-[#1F1F3E] bg-[#272746] px-5 py-6">
+              <h2 className="text-[16px] font-bold text-white">{role}</h2>
+
+              <div className="mt-4 grid grid-cols-1 gap-4 md:grid-cols-2 md:justify-start md:[grid-template-columns:repeat(2,minmax(0,278px))]">
+                {members.map((member) => {
+                  const twitter = resolveTwitterLink(member.twitter)
+                  return (
+                    <article
+                      key={`${member.role}-${member.id}`}
+                      className="w-full rounded-[8px] border-2 border-white/10 bg-black/10 px-3 pb-[10px] pt-3"
+                    >
+                      <div className="flex items-start gap-2">
+                        <div className="h-[70px] w-[64px] shrink-0 overflow-hidden rounded-[2px]">
+                          {/* eslint-disable-next-line @next/next/no-img-element */}
+                          <img
+                            src={habboAvatarUrl(member.nick)}
+                            alt={member.nick}
+                            className="h-full w-full object-cover image-pixelated"
+                          />
+                        </div>
+
+                        <div className="flex min-w-0 flex-1 flex-col gap-3">
+                          <div className="flex items-center justify-between gap-2">
+                            <p className="truncate text-[16px] font-bold text-[#2596FF]">{member.nick}</p>
+                            {twitter ? (
+                              <a
+                                href={twitter}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex h-[31px] w-[31px] shrink-0 items-center justify-center rounded-[4px] bg-[#2596FF] text-white transition hover:bg-[#2976E8]"
+                                aria-label={`Profil Twitter de ${member.nick}`}
+                              >
+                                <Twitter className="h-[15px] w-[15px]" />
+                              </a>
+                            ) : (
+                              <span className="h-[31px] w-[31px] shrink-0 rounded-[4px] bg-white/10" aria-hidden />
+                            )}
+                          </div>
+
+                          <div className="flex items-center gap-2 text-[14px] text-[#BEBECE]">
+                            <CalendarClock className="h-[14px] w-[14px] shrink-0" />
+                            <span className="truncate">Dans l&apos;equipe depuis {formatTenure(member.joinedAt)}</span>
+                          </div>
+                        </div>
+                      </div>
+                    </article>
+                  )
+                })}
+              </div>
+            </section>
+          )
+        })
+      )}
     </main>
   )
 }

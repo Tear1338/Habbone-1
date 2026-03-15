@@ -17,11 +17,13 @@ import { postRegister } from '@/lib/register-utils'
 import { signIn } from 'next-auth/react'
 import { AlertTriangle, CheckCircle2, Info, RefreshCcw, Sparkles } from 'lucide-react'
 
+type HabboHotel = 'fr' | 'com' | 'com.br' | 'es' | 'it' | 'de' | 'nl' | 'fi' | 'com.tr'
+
 type RegistrationFormState = {
   nick: string
   email: string
   password: string
-  hotel: 'fr' | 'com' | 'com.br'
+  hotel: HabboHotel
 }
 
 type VerificationState = {
@@ -33,7 +35,19 @@ type VerificationState = {
 
 type StatusState = { type: 'info' | 'error' | 'success'; message: string } | null
 
-const HOTEL_OPTIONS: RegistrationFormState['hotel'][] = ['fr', 'com', 'com.br']
+const HOTEL_OPTIONS: HabboHotel[] = ['fr', 'com', 'com.br', 'es', 'it', 'de', 'nl', 'fi', 'com.tr']
+
+const HOTEL_LABELS: Record<HabboHotel, string> = {
+  fr: 'Habbo.fr',
+  com: 'Habbo.com',
+  'com.br': 'Habbo.com.br',
+  es: 'Habbo.es',
+  it: 'Habbo.it',
+  de: 'Habbo.de',
+  nl: 'Habbo.nl',
+  fi: 'Habbo.fi',
+  'com.tr': 'Habbo.com.tr',
+}
 
 type RegistrationCompletePayload = {
   verification: VerificationState
@@ -457,7 +471,7 @@ function RegisterForm({
                       onChange={() => onHotelChange(value)}
                       className="accent-[#0FD52F]"
                     />
-                    <span>{value === 'fr' ? 'Habbo.fr' : value === 'com' ? 'Habbo.com' : 'Habbo.com.br'}</span>
+                    <span>{HOTEL_LABELS[value]}</span>
                   </label>
                 )
               })}
