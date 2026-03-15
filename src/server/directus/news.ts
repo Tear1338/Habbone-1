@@ -43,7 +43,7 @@ export async function adminCreateNews(data: {
     noticia: data.noticia,
     autor: data.autor ?? null,
     data: data.data ?? new Date().toISOString(),
-    status: data.status ?? null,
+    status: data.status ?? 'published',
   };
   return directusService.request(cItem('noticias', payload)) as Promise<NewsRecord>;
 }
