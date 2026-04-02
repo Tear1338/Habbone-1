@@ -12,7 +12,7 @@ type TabId = 'mondial' | 'fr' | 'mobis'
 
 const BADGE_API = 'https://www.habboassets.com/api/v1/badges'
 const FURNI_API = 'https://www.habboassets.com/api/v1/furniture'
-const GRID_COLS = 7
+const GRID_COLS = 6
 const GRID_ROWS = 7
 const PAGE_SIZE = GRID_COLS * GRID_ROWS
 
@@ -135,7 +135,7 @@ export default function LatestBadges() {
               Aucun element disponible.
             </div>
           ) : (
-            <div className="grid grid-cols-7 gap-[8px]">
+            <div className="grid grid-cols-6 gap-[8px]">
               {visibleSlots.map((item, index) => (
                 <div
                   key={item ? `${item.code}-${index}` : `empty-${index}`}
