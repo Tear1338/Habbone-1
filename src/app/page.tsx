@@ -4,6 +4,7 @@ import Stories from "@/components/home/stories";
 import ForumTopics from "@/components/home/forum-topics";
 import LatestBadges from "@/components/home/latest-mobis";
 import Publicite from "@/components/home/publicite";
+import Ranking from "@/components/home/ranking";
 
 export const revalidate = 60;
 
@@ -18,6 +19,8 @@ export default function Home() {
         <LatestBadges />
         <Publicite />
       </section>
+
+      <Ranking />
     </main>
   );
 }
