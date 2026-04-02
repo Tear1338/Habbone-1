@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { directusUrl, serviceToken } from '@/server/directus/client'
 
-export const revalidate = 300 // cache 5 minutes
+export const dynamic = 'force-dynamic'
 
 type RankingEntry = { nick: string; score: number }
 type RankingCategory = 'comments' | 'articles' | 'topics' | 'coins'
@@ -13,7 +13,7 @@ async function fetchAllAutors(table: string, field = 'autor'): Promise<string[]>
   url.searchParams.set('limit', '-1')
   const res = await fetch(url.toString(), {
     headers: { Authorization: `Bearer ${serviceToken}` },
-    next: { revalidate: 300 },
+    cache: 'no-store',
   })
   if (!res.ok) return []
   const json = await res.json()
@@ -27,7 +27,7 @@ async function fetchTopCoins(limit: number): Promise<RankingEntry[]> {
   url.searchParams.set('limit', String(limit))
   const res = await fetch(url.toString(), {
     headers: { Authorization: `Bearer ${serviceToken}` },
-    next: { revalidate: 300 },
+    cache: 'no-store',
   })
   if (!res.ok) return []
   const json = await res.json()
@@ -77,9 +77,7 @@ export async function GET() {
       coins: coins.slice(0, TOP),
     }
 
-    return NextResponse.json(result, {
-      headers: { 'Cache-Control': 'public, s-maxage=300, stale-while-revalidate=60' },
-    })
+    return NextResponse.json(result)
   } catch {
     return NextResponse.json(
       { comments: [], articles: [], topics: [], coins: [] },
