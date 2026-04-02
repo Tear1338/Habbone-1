@@ -28,47 +28,40 @@ export default function PubliciteClient({ partners }: { partners: Partner[] }) {
   return (
     <section className="flex h-full w-full flex-col">
       <div className="flex flex-1 flex-col overflow-hidden rounded-[4px] border border-[#1F1F3E] bg-[#272746]">
-        <header className="flex h-[50px] items-center justify-between px-0">
-          <div className="flex items-center gap-3 pl-5">
+        <header className="flex h-[50px] shrink-0 items-center justify-between border-b border-[#34345A] bg-[rgba(0,0,0,0.1)] px-5">
+          <div className="flex items-center gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/img/contact.png" alt="" className="h-[34px] w-auto image-pixelated" />
-            <h2 className="text-[18px] font-bold uppercase text-[#DDD] [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">
+            <img src="/img/contact.png" alt="" className="h-[28px] w-auto image-pixelated" />
+            <h2 className="text-[14px] font-bold uppercase text-white">
               Publicite
             </h2>
           </div>
 
-          <div className="flex items-center gap-4 pr-0 sm:pr-5">
+          <div className="flex items-center gap-2">
             <Link
               href="/partenaires"
-              className="hidden h-[50px] items-center rounded-[4px] bg-[rgba(255,255,255,0.1)] px-[20px] text-[11px] font-bold uppercase tracking-[0.04em] text-[#DDD] transition hover:bg-[rgba(255,255,255,0.16)] sm:inline-flex"
+              className="hidden h-[36px] items-center rounded-[3px] bg-[rgba(255,255,255,0.08)] px-3 text-[11px] font-bold uppercase tracking-[0.04em] text-[#DDD] transition hover:bg-[rgba(255,255,255,0.16)] sm:inline-flex"
             >
-              Devenir partenaire
+              Partenaires
             </Link>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                aria-label="Publicite precedente"
-                onClick={showPrevious}
-                disabled={!canMove}
-                className="grid h-[50px] w-[50px] place-items-center rounded-[4px] bg-[rgba(255,255,255,0.1)] text-[#DDD] transition hover:bg-[#2596FF] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <i className="material-icons text-[22px]" aria-hidden>
-                  chevron_left
-                </i>
-              </button>
-              <button
-                type="button"
-                aria-label="Publicite suivante"
-                onClick={showNext}
-                disabled={!canMove}
-                className="grid h-[50px] w-[50px] place-items-center rounded-[4px] bg-[rgba(255,255,255,0.1)] text-[#DDD] transition hover:bg-[#2596FF] disabled:cursor-not-allowed disabled:opacity-50"
-              >
-                <i className="material-icons text-[22px]" aria-hidden>
-                  chevron_right
-                </i>
-              </button>
-            </div>
+            <button
+              type="button"
+              aria-label="Publicite precedente"
+              onClick={showPrevious}
+              disabled={!canMove}
+              className="grid h-[36px] w-[36px] place-items-center rounded-[3px] bg-[rgba(255,255,255,0.08)] text-[#DDD] transition hover:bg-[#2596FF] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <i className="material-icons text-[18px]" aria-hidden>chevron_left</i>
+            </button>
+            <button
+              type="button"
+              aria-label="Publicite suivante"
+              onClick={showNext}
+              disabled={!canMove}
+              className="grid h-[36px] w-[36px] place-items-center rounded-[3px] bg-[rgba(255,255,255,0.08)] text-[#DDD] transition hover:bg-[#2596FF] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <i className="material-icons text-[18px]" aria-hidden>chevron_right</i>
+            </button>
           </div>
         </header>
 
@@ -76,11 +69,15 @@ export default function PubliciteClient({ partners }: { partners: Partner[] }) {
           href={activePartner.href}
           target="_blank"
           rel="noreferrer"
-          className="relative block min-h-[242px] flex-1 overflow-hidden rounded-[4px] border-t border-white/10"
+          className="relative flex-1 overflow-hidden"
         >
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={activePartner.banner} alt={activePartner.name} className="h-full w-full object-cover" />
-          <div className="absolute inset-0 shadow-[inset_0_0_0_3px_rgba(255,255,255,0.2)]" />
+          <img
+            src={activePartner.banner}
+            alt={activePartner.name}
+            className="absolute inset-0 h-full w-full object-cover"
+          />
+          <div className="absolute inset-0 shadow-[inset_0_0_0_3px_rgba(255,255,255,0.08)]" />
           <div className="absolute bottom-[14px] right-[14px] rounded-[4px] bg-[rgba(20,20,51,0.85)] px-[10px] py-[10px] text-[13px] font-bold text-white backdrop-blur-[25px]">
             {activePartner.name}
           </div>

@@ -6,12 +6,12 @@ import PubliciteClient, { type Partner } from './publicite-client'
 const FALLBACK_PARTNERS: Partner[] = [
   {
     name: 'Kihabbo, un monde different',
-    banner: '/img/partenaire.png',
+    banner: '/uploads/news-a182f4b65f.png',
     href: 'https://discord.gg/zCFvdHsAry',
   },
   {
     name: 'Habboneco, communaute officielle',
-    banner: '/img/partenaire.png',
+    banner: '/uploads/news-a182f4b65f.png',
     href: 'https://discord.gg/s4NpDcgcWe',
   },
 ]
