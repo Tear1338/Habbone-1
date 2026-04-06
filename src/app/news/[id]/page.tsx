@@ -1,3 +1,4 @@
+import Link from "next/link"
 import { getServerSession } from "next-auth"
 import type { Session } from "next-auth"
 
@@ -122,7 +123,7 @@ export default async function NewsDetailPage(props: NewsDetailProps) {
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src={avatarUrl} alt="" className="h-[50px] w-[50px] object-contain image-pixelated" />
               <div className="flex items-center gap-3 text-base">
-                <span className="font-bold text-[#2596FF]">{author || "Anonyme"}</span>
+                <Link href={`/profile?user=${encodeURIComponent(author || "Anonyme")}`} className="font-bold text-[#2596FF] hover:underline transition">{author || "Anonyme"}</Link>
                 {publishedAt ? <span className="font-normal text-[#DDD]">{publishedAt}</span> : null}
               </div>
             </div>

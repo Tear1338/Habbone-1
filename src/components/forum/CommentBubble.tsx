@@ -83,7 +83,7 @@ export default function CommentBubble({
       <img
         src={imgSrc}
         alt={author ? `Avatar de ${author}` : "Avatar Habbo"}
-        className="h-[48px] w-[48px] flex-shrink-0 object-contain image-pixelated"
+        className="h-[58px] w-[58px] flex-shrink-0 object-contain image-pixelated"
         loading="lazy"
       />
 

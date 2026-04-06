@@ -150,7 +150,7 @@ export default async function TopicPage(props: TopicPageProps) {
                 <div className="flex items-center gap-3">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={avatarUrl} alt="" className="h-[62px] w-[54px] object-contain image-pixelated" />
-                  <span className="text-[16px] font-bold text-[#2976E8]">{author || "Anonyme"}</span>
+                  <Link href={`/profile?user=${encodeURIComponent(author || "Anonyme")}`} className="text-[16px] font-bold text-[#2976E8] hover:underline transition">{author || "Anonyme"}</Link>
                 </div>
                 <TopicVoteButtons topicId={topicId} initial={voteSummary} canVote={isAuthenticated} />
               </div>
