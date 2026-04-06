@@ -13,7 +13,6 @@ export const navigation: NavEntry[] = [
     children: [
       { label: 'Tous les articles', href: '/news' },
       { label: 'Equipe', href: '/team' },
-      { label: 'A propos', href: '/about' },
       { label: 'Partenaires', href: '/partenaires' },
       { label: 'Communaute Discord', href: 'https://discord.gg/s4NpDcgcWe', external: true },
     ],
