@@ -30,11 +30,12 @@ export async function searchLegacyUsuarios(
   q?: string,
   limit = 20,
   page = 1,
-  filters?: { roleName?: string | null; status?: string | null },
+  filters?: { roleName?: string | null; roleId?: string | null; status?: string | null },
 ): Promise<{ items: LegacyUserLite[]; total: number }> {
   const applyFilters = (params: URLSearchParams) => {
     if (q) params.set('search', q);
-    if (filters?.roleName) params.set('filter[role][_eq]', String(filters.roleName));
+    if (filters?.roleId) params.set('filter[directus_role_id][_eq]', String(filters.roleId));
+    else if (filters?.roleName) params.set('filter[role][_eq]', String(filters.roleName));
     if (filters?.status) params.set('filter[status][_eq]', String(filters.status));
   };
 
@@ -64,7 +65,8 @@ export async function searchLegacyUsuarios(
     };
     if (q) params.search = q;
     const filter: Record<string, unknown> = {};
-    if (filters?.roleName) filter.role = { _eq: filters.roleName };
+    if (filters?.roleId) filter.directus_role_id = { _eq: filters.roleId };
+    else if (filters?.roleName) filter.role = { _eq: filters.roleName };
     if (filters?.status) filter.status = { _eq: filters.status };
     if (Object.keys(filter).length > 0) {
       params.filter = filter as any;

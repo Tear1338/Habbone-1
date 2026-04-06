@@ -46,7 +46,7 @@ export async function searchAdminUsers(input: SearchInput): Promise<SearchResult
   const roleNameTarget = roleRecord ? String(roleRecord.name || '').toLowerCase() : undefined;
 
   const legacy = await searchLegacyUsuarios(q, limit, page, {
-    roleName: roleRecord?.name ?? undefined,
+    roleId: roleId ?? undefined,
     status,
   }).catch(() => ({ items: [], total: 0 }));
 
