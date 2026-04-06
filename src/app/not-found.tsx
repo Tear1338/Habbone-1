@@ -1,15 +1,10 @@
 import Link from "next/link";
+import SadAvatar from "@/components/ui/sad-avatar";
 
 export default function NotFound() {
   return (
     <main className="mx-auto flex min-h-[70vh] w-full max-w-[1200px] flex-col items-center justify-center px-4 py-20 text-center sm:px-6">
-      {/* Habbo avatar */}
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src="https://www.habbo.fr/habbo-imaging/avatarimage?figure=hr-3163-1395-42.hd-180-10.ch-3030-1408-92.lg-3116-1408-92.sh-3115-1408-92.ha-3614-1408-92&direction=2&head_direction=3&gesture=sad&action=wav&size=l&img_format=png"
-        alt=""
-        className="mb-6 h-[130px] w-auto image-pixelated drop-shadow-[0_4px_20px_rgba(0,0,0,0.4)]"
-      />
+      <SadAvatar className="mb-6 h-[130px] w-auto image-pixelated drop-shadow-[0_4px_20px_rgba(0,0,0,0.4)]" />
 
       <h1 className="text-[72px] font-black leading-none text-white [text-shadow:0_2px_10px_rgba(0,0,0,0.3)]">
         404
