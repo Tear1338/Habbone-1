@@ -133,21 +133,9 @@ export default function LatestArticlesClient({ items }: { items: Item[] }) {
                       <img src={image} alt="" className="h-full w-full object-cover" />
                       {!isHighlighted ? <div className="absolute inset-0 bg-black/20" /> : null}
 
-                      <div className="absolute bottom-[10px] left-[10px] right-[10px] flex items-center justify-between">
+                      <div className="absolute bottom-[10px] left-[10px] right-[10px]">
                         <span className="rounded-[4px] bg-[rgba(20,20,51,0.8)] px-[10px] py-[7px] text-[12px] font-bold uppercase text-[#BEBECE] backdrop-blur-[2.5px]">
                           {category}
-                        </span>
-                        <span
-                          className={`grid h-[39px] w-[40px] place-items-center rounded-[4px] backdrop-blur-[2.5px] ${
-                            isHighlighted ? "bg-[rgba(20,20,51,0.85)]" : "bg-[rgba(20,20,51,0.8)]"
-                          }`}
-                        >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={isHighlighted ? "/img/star-mini.png" : "/img/star-blue-mini.png"}
-                            alt=""
-                            className="h-[18px] w-[18px] image-pixelated"
-                          />
                         </span>
                       </div>
                     </div>
