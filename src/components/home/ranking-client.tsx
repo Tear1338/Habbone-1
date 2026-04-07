@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
+import Link from 'next/link'
 import { MessageSquare, FileText, MessagesSquare, Coins, Trophy } from 'lucide-react'
 import { buildHabboAvatarUrl } from '@/lib/habbo-imaging'
 
@@ -53,11 +54,11 @@ function PodiumAvatar({ nick, rank, score }: { nick: string; rank: number; score
   const medalLabels = ['1er', '2e', '3e']
 
   return (
-    <div className="flex flex-col items-center" style={{ order: rank === 0 ? 1 : rank === 1 ? 0 : 2 }}>
+    <Link href={`/profile?user=${encodeURIComponent(nick)}`} className="flex flex-col items-center transition hover:brightness-110" style={{ order: rank === 0 ? 1 : rank === 1 ? 0 : 2 }}>
       <div className="relative mb-1">
         <AvatarImg nick={nick} className="h-[110px] w-auto image-pixelated drop-shadow-[0_2px_8px_rgba(0,0,0,0.5)]" />
       </div>
-      <span className="mb-1 max-w-[120px] truncate text-[13px] font-bold text-white">{nick}</span>
+      <span className="mb-1 max-w-[120px] truncate text-[13px] font-bold text-white hover:text-[#2596FF]">{nick}</span>
       <span className="mb-2 text-[12px] text-[#BEBECE]">{score.toLocaleString('fr-FR')}</span>
       <div
         className="relative flex w-[110px] flex-col items-center rounded-t-[6px] border border-b-0 border-white/10 bg-gradient-to-t from-[#1F1F3E] to-[#2C2C5A] pt-2"
@@ -67,14 +68,14 @@ function PodiumAvatar({ nick, rank, score }: { nick: string; rank: number; score
           {medalLabels[rank]}
         </span>
       </div>
-    </div>
+    </Link>
   )
 }
 
 function RankRow({ entry, rank }: { entry: RankingEntry; rank: number }) {
   const isMedal = rank < 3
   return (
-    <div className={`flex items-center gap-3 rounded-[4px] border px-3 py-2.5 transition hover:border-white/10 hover:bg-[#303060] ${
+    <Link href={`/profile?user=${encodeURIComponent(entry.nick)}`} className={`flex items-center gap-3 rounded-[4px] border px-3 py-2.5 transition hover:border-white/10 hover:bg-[#303060] ${
       isMedal ? 'border-white/5 bg-[#2C2C5A]' : 'border-[#1F1F3E] bg-[#1F1F3E]'
     }`}>
       <span className={`flex h-[28px] w-[28px] shrink-0 items-center justify-center rounded-full text-[12px] font-bold ${
@@ -89,7 +90,7 @@ function RankRow({ entry, rank }: { entry: RankingEntry; rank: number }) {
       <span className={`shrink-0 text-[13px] font-bold ${isMedal ? 'text-white' : 'text-[#2596FF]'}`}>
         {entry.score.toLocaleString('fr-FR')}
       </span>
-    </div>
+    </Link>
   )
 }
 
