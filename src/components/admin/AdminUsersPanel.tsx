@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Ban, ChevronLeft, ChevronRight, RotateCcw, Search, Trash2 } from "lucide-react";
+import { Ban, ChevronLeft, ChevronRight, Coins, RotateCcw, Search, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import UserHistoryModal from "@/components/admin/UserHistoryModal";
 import { Badge } from "@/components/ui/badge";
@@ -51,6 +51,9 @@ export default function AdminUsersPanel({
   const [banLoadingId, setBanLoadingId] = useState<string | null>(null);
   const [deleteLoadingId, setDeleteLoadingId] = useState<string | null>(null);
   const [selectedRoles, setSelectedRoles] = useState<Record<string, string>>({});
+  const [coinsModal, setCoinsModal] = useState<{ userId: string; userName: string } | null>(null);
+  const [coinsAmount, setCoinsAmount] = useState("");
+  const [coinsSending, setCoinsSending] = useState(false);
   const [q, setQ] = useState("");
   const [roleId, setRoleId] = useState<string | undefined>(undefined);
   const [page, setPage] = useState(1);
@@ -224,6 +227,32 @@ export default function AdminUsersPanel({
     }
   };
 
+  const handleSendCoins = async () => {
+    if (!coinsModal) return;
+    const amount = parseInt(coinsAmount, 10);
+    if (!amount || amount <= 0) {
+      toast.error("Montant invalide");
+      return;
+    }
+    setCoinsSending(true);
+    try {
+      const res = await fetch("/api/admin/users/coins", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId: coinsModal.userId, amount }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error || "Echec");
+      toast.success(`${amount} HabbOneCoins envoyes a ${json?.nick || coinsModal.userName} (nouveau solde: ${json?.newBalance})`);
+      setCoinsModal(null);
+      setCoinsAmount("");
+    } catch (e: any) {
+      toast.error(e?.message || "Erreur");
+    } finally {
+      setCoinsSending(false);
+    }
+  };
+
   const handleSearch = () => {
     void getUsers({ page: 1 });
   };
@@ -390,6 +419,20 @@ export default function AdminUsersPanel({
 
                     <Button
                       type="button"
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        setCoinsModal({ userId: user.id, userName: formatFullName(user) });
+                        setCoinsAmount("");
+                      }}
+                      className="h-[36px] rounded-[4px] border-[#141433] bg-[#25254D] text-xs text-[#FFC800] hover:bg-[#303060]"
+                    >
+                      <Coins className="mr-1 h-3 w-3" />
+                      Coins
+                    </Button>
+
+                    <Button
+                      type="button"
                       size="sm"
                       onClick={() => handleDeleteUser(user)}
                       disabled={isDeleteBusy}
@@ -433,6 +476,70 @@ export default function AdminUsersPanel({
           </Button>
         </div>
       </div>
+      {/* Coins Modal */}
+      {coinsModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={() => setCoinsModal(null)}>
+          <div className="w-full max-w-[400px] rounded-[8px] border border-[#1F1F3E] bg-[#272746] p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-[16px] font-bold text-white">
+              Envoyer des HabbOneCoins
+            </h3>
+            <p className="mt-1 text-[13px] text-[#BEBECE]">
+              Destinataire : <span className="font-bold text-[#2596FF]">{coinsModal.userName}</span>
+            </p>
+
+            <div className="mt-4">
+              <label className="mb-1 block text-[11px] font-bold uppercase text-[#BEBECE]/70">Montant</label>
+              <input
+                type="number"
+                min={1}
+                max={100000}
+                value={coinsAmount}
+                onChange={(e) => setCoinsAmount(e.target.value)}
+                placeholder="Ex: 500"
+                autoFocus
+                onKeyDown={(e) => { if (e.key === "Enter") handleSendCoins(); }}
+                className="w-full rounded-[4px] border border-[#141433] bg-[#1F1F3E] px-3 py-2.5 text-[14px] text-white placeholder:text-[#BEBECE]/40 focus:border-[#FFC800] focus:outline-none"
+              />
+            </div>
+
+            {/* Quick amounts */}
+            <div className="mt-3 flex flex-wrap gap-2">
+              {[10, 50, 100, 500, 1000].map((amount) => (
+                <button
+                  key={amount}
+                  type="button"
+                  onClick={() => setCoinsAmount(String(amount))}
+                  className="rounded-[4px] bg-[rgba(255,255,255,0.06)] px-3 py-1.5 text-[12px] font-bold text-[#FFC800] transition hover:bg-[rgba(255,255,255,0.12)]"
+                >
+                  +{amount}
+                </button>
+              ))}
+            </div>
+
+            <div className="mt-5 flex items-center justify-end gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setCoinsModal(null)}
+                className="h-[36px] rounded-[4px] border-[#141433] bg-[#25254D] text-xs text-white hover:bg-[#303060]"
+              >
+                Annuler
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={handleSendCoins}
+                disabled={coinsSending || !coinsAmount || parseInt(coinsAmount, 10) <= 0}
+                className="h-[36px] rounded-[4px] bg-[#FFC800] text-xs font-bold text-black hover:bg-[#E6B400] disabled:opacity-50"
+              >
+                <Coins className="mr-1 h-3 w-3" />
+                {coinsSending ? "Envoi..." : "Envoyer"}
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
