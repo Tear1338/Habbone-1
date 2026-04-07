@@ -53,6 +53,14 @@ async function fetchUsersByRoleId(roleId: string): Promise<LegacyTeamRow[]> {
 // Hidden roles that shouldn't appear on the team page
 const HIDDEN_ROLES = new Set(['member', 'frontend service']);
 
+// Display order: lower number = higher on the page. Unlisted roles go last.
+const ROLE_ORDER: Record<string, number> = {
+  'fondateur': 0,
+  'animateurs': 1,
+  'correcteur': 2,
+  'configurateur wired': 3,
+};
+
 export async function listTeamMembersByRoles(_roleNames?: string[]): Promise<Record<string, TeamMember[]>> {
   // Fetch all Directus roles dynamically
   const roles = await fetchRoles();
@@ -83,10 +91,18 @@ export async function listTeamMembersByRoles(_roleNames?: string[]): Promise<Rec
     })
   );
 
-  for (const { roleName, members } of entries) {
-    if (members.length > 0) {
-      result[roleName] = members;
-    }
+  // Sort by ROLE_ORDER priority, then alphabetically
+  const sorted = entries
+    .filter(e => e.members.length > 0)
+    .sort((a, b) => {
+      const orderA = ROLE_ORDER[a.roleName.toLowerCase()] ?? 99;
+      const orderB = ROLE_ORDER[b.roleName.toLowerCase()] ?? 99;
+      if (orderA !== orderB) return orderA - orderB;
+      return a.roleName.localeCompare(b.roleName, 'fr', { sensitivity: 'base' });
+    });
+
+  for (const { roleName, members } of sorted) {
+    result[roleName] = members;
   }
 
   return result;
