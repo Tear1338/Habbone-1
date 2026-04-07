@@ -9,8 +9,7 @@ type Mobi = {
   category: string
 }
 
-// Habbowidget Furni API (public)
-const FURNI_API = 'https://www.habboassets.com/api/v1/furnidata?limit=500'
+const FURNI_API = 'https://www.habboassets.com/api/v1/furniture?limit=1000'
 
 const GRID_COLS = 8
 const GRID_ROWS = 5
@@ -26,25 +25,15 @@ export default function MobisPageClient() {
     fetch(FURNI_API)
       .then((r) => r.json())
       .then((json) => {
-        // The API may return different formats — handle both
-        const raw = Array.isArray(json?.furnidata)
-          ? json.furnidata
-          : Array.isArray(json?.roomitemtypes?.furnitype)
-            ? json.roomitemtypes.furnitype
-            : Array.isArray(json)
-              ? json
-              : []
+        const raw = Array.isArray(json?.furniture) ? json.furniture : []
 
         const data = raw
-          .filter((row: any) => row?.name || row?.classname)
+          .filter((row: any) => typeof row?.url_icon_habbo === 'string' && row.url_icon_habbo.length > 0)
           .map((row: any, idx: number) => ({
             id: Number(row?.id ?? idx),
             name: String(row?.name || row?.classname || 'Mobi'),
-            image: row?.icon_url
-              || row?.iconUrl
-              || row?.image
-              || `https://images.habbo.com/dcr/hof_furni/${row?.revision || 0}/${row?.classname || 'unknown'}_icon.png`,
-            category: String(row?.category || row?.furniline || 'Autre'),
+            image: String(row?.url_icon_habbo || ''),
+            category: String(row?.furniline || row?.type || 'Autre'),
           }))
 
         setItems(data)
