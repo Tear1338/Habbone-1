@@ -204,17 +204,23 @@ export function getPublicNewsComments(newsId: number): Promise<NewsCommentRecord
 }
 
 export async function listPublicNewsBadges(limitNews = 160, limitBadges = 220): Promise<NewsBadgeItem[]> {
-  const rows = await directusService
-    .request(
-      rItems('noticias', {
-        fields: ['id', 'titulo', 'noticia', 'data'],
-        sort: ['-data'],
-        limit: limitNews,
-      } as any),
-    )
-    .catch(() => [] as NewsRecord[]);
+  let rows: NewsRecord[] = [];
+  try {
+    const url = new URL(`${directusUrl}/items/noticias`);
+    url.searchParams.set('fields', 'id,titulo,noticia,data');
+    url.searchParams.set('sort', '-data');
+    url.searchParams.set('limit', String(limitNews));
+    const res = await fetch(url.toString(), {
+      headers: { Authorization: `Bearer ${serviceToken}` },
+      cache: 'no-store',
+    });
+    if (res.ok) {
+      const json = await res.json();
+      rows = Array.isArray(json?.data) ? json.data : [];
+    }
+  } catch {}
 
-  if (!Array.isArray(rows) || rows.length === 0) return [];
+  if (rows.length === 0) return [];
 
   const out: NewsBadgeItem[] = [];
 
