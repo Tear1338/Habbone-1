@@ -61,11 +61,13 @@ export type DateFormatOptions = {
   fallback?: string;
 };
 
+const TZ = 'Europe/Paris';
+
 const FORMAT_CONFIGS: Record<DateFormatStyle, Intl.DateTimeFormatOptions> = {
-  short: { dateStyle: 'short', timeStyle: 'short' },
-  medium: { dateStyle: 'medium', timeStyle: 'short' },
-  long: { dateStyle: 'long', timeStyle: 'medium' },
-  'date-only': { day: '2-digit', month: '2-digit', year: 'numeric' },
+  short: { dateStyle: 'short', timeStyle: 'short', timeZone: TZ },
+  medium: { dateStyle: 'medium', timeStyle: 'short', timeZone: TZ },
+  long: { dateStyle: 'long', timeStyle: 'medium', timeZone: TZ },
+  'date-only': { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: TZ },
 };
 
 /**
@@ -98,6 +100,7 @@ export function formatDateFr(value: unknown): string | null {
       day: '2-digit',
       month: '2-digit',
       year: 'numeric',
+      timeZone: TZ,
     });
   } catch {
     return null;

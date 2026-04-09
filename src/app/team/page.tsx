@@ -23,14 +23,17 @@ function formatTenure(value?: string | null) {
   const ts = parseTimestamp(value, { numeric: 'auto', numericString: 'number', mysqlLike: true })
   if (!ts) return 'Date inconnue'
 
-  const now = Date.now()
-  const diffMs = Math.max(0, now - ts)
-  const monthMs = 1000 * 60 * 60 * 24 * 30
-  const months = Math.floor(diffMs / monthMs)
-
-  if (months < 1) return "moins d'un mois"
-  if (months === 1) return '1 mois'
-  return `${months} mois`
+  try {
+    const date = new Date(ts)
+    return date.toLocaleDateString('fr-FR', {
+      day: '2-digit',
+      month: 'long',
+      year: 'numeric',
+      timeZone: 'Europe/Paris',
+    })
+  } catch {
+    return 'Date inconnue'
+  }
 }
 
 function resolveTwitterLink(value?: string | null) {
@@ -123,7 +126,7 @@ export default async function TeamPage() {
 
                           <div className="flex items-center gap-2 text-[14px] text-[#BEBECE]">
                             <CalendarClock className="h-[14px] w-[14px] shrink-0" />
-                            <span className="truncate">Dans l&apos;equipe depuis {formatTenure(member.joinedAt)}</span>
+                            <span className="truncate">Membre depuis le {formatTenure(member.joinedAt)}</span>
                           </div>
                         </div>
                       </div>
