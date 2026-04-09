@@ -7,6 +7,7 @@ const Body = z.object({
   headerLogoUrl: z.string().trim().max(512).optional(),
   headerBackgroundColor: z.string().trim().max(16).optional(),
   headerBackgroundImageUrl: z.string().trim().max(512).nullable().optional(),
+  showLogo: z.boolean().optional(),
 });
 
 export const dynamic = 'force-dynamic';
