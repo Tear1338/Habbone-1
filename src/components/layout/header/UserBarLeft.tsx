@@ -156,12 +156,12 @@ export default function UserBarLeft({
       {!isLoading && !isAuthenticated && (
         <form className="info-login hidden lg:flex w-full items-center gap-[18px]" onSubmit={handleSubmit}>
           {/* Avatar dynamique */}
-          <div className="grid h-[51px] w-[51px] shrink-0 place-items-center rounded-[4px] bg-[#141433] border-2 border-[#141433] overflow-hidden">
+          <div className="shrink-0">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={loginAvatarUrl}
               alt=""
-              className="h-[42px] w-auto image-pixelated transition-all duration-300"
+              className="h-[55px] w-auto image-pixelated transition-all duration-300"
               onError={(e) => {
                 const img = e.target as HTMLImageElement
                 if (!img.dataset.fallback) {
