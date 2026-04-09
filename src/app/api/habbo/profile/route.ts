@@ -52,7 +52,7 @@ export async function GET(req: Request) {
             uniqueId,
             lite: true,
           }),
-          { headers: { 'Cache-Control': 'no-store' } }
+          { headers: { 'Cache-Control': 'public, s-maxage=120, stale-while-revalidate=600' } }
         );
       }
 
@@ -85,7 +85,6 @@ export async function GET(req: Request) {
       achievementsCatalogRes,
     });
 
-    // ---- Enrich badges with reliable album/image hints using achievements catalog ----
     return NextResponse.json(
       buildHabboProfilePayload({
         core,
@@ -100,7 +99,7 @@ export async function GET(req: Request) {
       }),
       {
         headers: {
-          'Cache-Control': 'no-store',
+          'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
         },
       }
     );

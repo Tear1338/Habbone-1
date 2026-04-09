@@ -21,21 +21,36 @@ function buildProfileUrlById(id: string, lite?: boolean) {
   return `/api/habbo/profile?${qs.toString()}`
 }
 
+// In-flight deduplication: avoid parallel identical requests
+const inflight = new Map<string, Promise<any>>()
+
 async function fetchProfile<T extends HabboProfileResponse = HabboProfileResponse>(
   url: string,
   options?: HabboProfileFetchOptions
 ): Promise<T> {
-  const response = await fetch(url, {
-    cache: options?.cache ?? 'no-store',
-    signal: options?.signal,
-  })
-  const json = (await response.json().catch(() => null)) as unknown
-  if (!response.ok) {
-    const maybeErr = (json as { error?: unknown } | null)?.error
-    const msg = typeof maybeErr === 'string' ? maybeErr : options?.fallbackMessage || 'Habbo profile fetch failed'
-    throw new Error(msg)
-  }
-  return json as T
+  // Deduplicate identical in-flight requests
+  const existing = inflight.get(url)
+  if (existing) return existing as Promise<T>
+
+  const promise = (async () => {
+    try {
+      const response = await fetch(url, {
+        signal: options?.signal,
+      })
+      const json = (await response.json().catch(() => null)) as unknown
+      if (!response.ok) {
+        const maybeErr = (json as { error?: unknown } | null)?.error
+        const msg = typeof maybeErr === 'string' ? maybeErr : options?.fallbackMessage || 'Habbo profile fetch failed'
+        throw new Error(msg)
+      }
+      return json as T
+    } finally {
+      inflight.delete(url)
+    }
+  })()
+
+  inflight.set(url, promise)
+  return promise
 }
 
 export async function fetchHabboProfileByName<T extends HabboProfileResponse = HabboProfileResponse>(
