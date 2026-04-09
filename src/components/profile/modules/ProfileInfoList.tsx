@@ -60,9 +60,9 @@ export function ProfileInfoList(props: {
         <div className="flex flex-wrap gap-2">
           {siteBadges.length ? (
             siteBadges.map((badge) => (
-              <div key={badge.id} title={badge.nome} className="grid h-[72px] w-[72px] place-items-center rounded-[4px] border border-black/20 bg-[#1F1F3E] transition hover:bg-[#303060]">
+              <div key={badge.id} title={badge.nome} className="grid h-[90px] w-[90px] place-items-center rounded-[6px] border border-[#2a2a5a] bg-[#141433] shadow-[inset_0_1px_0_rgba(255,255,255,0.05)] transition hover:bg-[#252550] hover:border-[#3a3a6a]">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={badge.imagem} alt={badge.nome} className="h-[56px] w-[56px] image-pixelated object-contain" />
+                <img src={badge.imagem} alt={badge.nome} className="h-[70px] w-[70px] image-pixelated object-contain drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]" />
               </div>
             ))
           ) : (

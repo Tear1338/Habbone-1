@@ -102,7 +102,7 @@ export default async function TeamPage() {
                             <div className="flex items-center gap-2">
                               {getRoleBadgeImage(role) && (
                                 // eslint-disable-next-line @next/next/no-img-element
-                                <img src={getRoleBadgeImage(role)!} alt={role} title={`Badge ${role}`} className="h-[48px] w-[48px] image-pixelated shrink-0 drop-shadow-[0_1px_3px_rgba(0,0,0,0.5)]" />
+                                <img src={getRoleBadgeImage(role)!} alt={role} title={`Badge ${role}`} className="h-[56px] w-[56px] image-pixelated shrink-0 drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]" />
                               )}
                               <p className="truncate text-[16px] font-bold text-[#2596FF]">{member.nick}</p>
                             </div>
