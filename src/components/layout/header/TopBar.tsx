@@ -18,16 +18,12 @@ const itemBaseClasses =
   'inline-flex items-center justify-center px-[15px] font-bold text-[1rem] text-white uppercase min-h-[80px] md:min-h-[100px] lg:min-h-[120px] transition-colors'
 
 const djAvatarUrl = buildHabboAvatarUrl('Decrypt', {
-  action: '',
   direction: 2,
   head_direction: 3,
   img_format: 'png',
   gesture: 'sml',
-  headonly: 0,
+  headonly: 1,
   size: 'l',
-  dance: 0,
-  frame_num: 0,
-  effect: '',
 })
 
 function renderLink(entry: NavEntry) {
@@ -220,14 +216,14 @@ export default function TopBar({ reduce, fast, menuOpen, setMenuOpen }: TopBarPr
         <div className="bar-top flex w-full min-h-[80px] md:min-h-[100px] lg:min-h-[120px] items-center justify-between">
           <div className="left flex items-center flex-1 min-w-0">
             <div
-              className="avatar flex justify-center items-end min-w-[80px] h-[75px] rounded-[6px] mr-[12px] bg-[#1a1a3e] border border-[#2a2a5a] overflow-hidden"
+              className="flex items-center justify-center min-w-[68px] h-[68px] rounded-[8px] mr-[12px] bg-gradient-to-b from-[#2C2C5A] to-[#1a1a3e] border border-[#3a3a6a] shadow-[inset_0_1px_0_rgba(255,255,255,0.1)]"
             >
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 id="avatar-stream"
                 src={djAvatarUrl}
                 alt="Habbo DJ"
-                className="image-pixelated h-[100px] w-auto object-cover object-top"
+                className="image-pixelated h-[50px] w-auto"
               />
             </div>
             <div className="info-stream flex flex-col justify-between w-full">
