@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useMemo, useState } from 'react'
+import React, { useCallback, useRef, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -39,6 +39,20 @@ export default function UserBarLeft({
   const [nick, setNick] = useState('')
   const [password, setPassword] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [loginAvatarNick, setLoginAvatarNick] = useState('Decrypt')
+  const loginDebounceRef = useRef<ReturnType<typeof setTimeout>>(null)
+
+  const handleNickInput = useCallback((value: string) => {
+    setNick(value)
+    if (loginDebounceRef.current) clearTimeout(loginDebounceRef.current)
+    loginDebounceRef.current = setTimeout(() => {
+      setLoginAvatarNick(value.trim().length >= 2 ? value.trim() : 'Decrypt')
+    }, 400)
+  }, [])
+
+  const loginAvatarUrl = buildHabboAvatarUrl(loginAvatarNick, {
+    direction: 2, head_direction: 3, img_format: 'png', gesture: 'sml', headonly: 1, size: 'l',
+  })
 
   const isLoading = !mounted || status === 'loading'
   const isAuthenticated = mounted && status !== 'loading' && Boolean(session?.user)
@@ -141,6 +155,22 @@ export default function UserBarLeft({
       {/* Desktop: Formulaire inline */}
       {!isLoading && !isAuthenticated && (
         <form className="info-login hidden lg:flex w-full items-center gap-[18px]" onSubmit={handleSubmit}>
+          {/* Avatar dynamique */}
+          <div className="grid h-[51px] w-[51px] shrink-0 place-items-center rounded-[4px] bg-[#141433] border-2 border-[#141433] overflow-hidden">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={loginAvatarUrl}
+              alt=""
+              className="h-[42px] w-auto image-pixelated transition-all duration-300"
+              onError={(e) => {
+                const img = e.target as HTMLImageElement
+                if (!img.dataset.fallback) {
+                  img.dataset.fallback = '1'
+                  img.src = buildHabboAvatarUrl('Decrypt', { direction: 2, head_direction: 3, img_format: 'png', gesture: 'sml', headonly: 1, size: 'l' })
+                }
+              }}
+            />
+          </div>
           <div className="flex flex-1 items-center gap-[10px]">
             <input
               name="nick"
@@ -148,7 +178,7 @@ export default function UserBarLeft({
               className="primary px-[17px] w-full max-w-[170px] h-[51px] rounded-[4px] font-bold text-[0.875rem] text-[#BEBECE] bg-[#141433] border-2 border-[#141433] focus:border-[#2596FF] focus:outline-none transition-colors"
               placeholder="Pseudo Habbo"
               value={nick}
-              onChange={(event) => setNick(event.target.value)}
+              onChange={(event) => handleNickInput(event.target.value)}
               autoComplete="username"
               required
             />
