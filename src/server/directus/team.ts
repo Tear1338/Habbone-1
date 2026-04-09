@@ -56,9 +56,13 @@ const HIDDEN_ROLES = new Set(['member', 'frontend service']);
 // Display order: lower number = higher on the page. Unlisted roles go last.
 const ROLE_ORDER: Record<string, number> = {
   'fondateur': 0,
-  'animateurs': 1,
-  'correcteur': 2,
-  'configurateur wired': 3,
+  'responsable': 1,
+  'animateurs': 2,
+  'journaliste': 3,
+  'correcteur': 4,
+  'configurateur wired': 5,
+  'constructeur': 6,
+  'graphiste': 7,
 };
 
 export async function listTeamMembersByRoles(_roleNames?: string[]): Promise<Record<string, TeamMember[]>> {

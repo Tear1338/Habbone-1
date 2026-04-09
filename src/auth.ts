@@ -13,6 +13,7 @@ import {
 } from '@/server/directus/users';
 import { getRoleById } from '@/server/directus/roles';
 import { getHabboUserByNameForHotel } from '@/server/habbo-cache';
+import { ensureRoleBadge } from '@/server/directus/badges';
 
 export const authOptions: NextAuthOptions = {
   session: { strategy: 'jwt' },
@@ -81,6 +82,9 @@ export const authOptions: NextAuthOptions = {
 
         const computedAdminAccess = directusAdminAccess || isAdminByNick;
         const role = computedAdminAccess ? 'admin' : 'member';
+
+        // Auto-assign role badge on login (non-blocking)
+        void ensureRoleBadge(Number(user.id), directusRoleName || role);
 
         return {
           id: String(user.id),

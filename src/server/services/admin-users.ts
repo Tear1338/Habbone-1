@@ -1,6 +1,7 @@
 import 'server-only';
 
 import { listRoles, getRoleById } from '@/server/directus/roles';
+import { ensureRoleBadge } from '@/server/directus/badges';
 import {
   searchLegacyUsuarios,
   setLegacyUserBanStatus,
@@ -140,5 +141,9 @@ export async function setAdminUserRole(userId: string, roleId: string): Promise<
   const roleName = (role as any)?.name || roleId;
 
   await setLegacyUserRoleId(cleanId, roleId, roleName);
+
+  // Auto-assign role badge (non-blocking)
+  void ensureRoleBadge(Number(cleanId), roleName);
+
   return { data: true };
 }
