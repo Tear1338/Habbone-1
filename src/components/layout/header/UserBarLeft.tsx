@@ -182,21 +182,16 @@ export default function UserBarLeft({
               autoComplete="username"
               required
             />
-            <div className="flex flex-col gap-0.5">
-              <input
-                name="password"
-                type="password"
-                className="primary px-[17px] w-full max-w-[170px] h-[51px] rounded-[4px] font-bold text-[0.875rem] text-[#BEBECE] bg-[#141433] border-2 border-[#141433] focus:border-[#2596FF] focus:outline-none transition-colors"
-                placeholder="Mot de passe"
-                value={password}
-                onChange={(event) => setPassword(event.target.value)}
-                autoComplete="current-password"
-                required
-              />
-              <Link href="/forgot-password" className="text-[10px] text-[#BEBECE]/50 hover:text-[#2596FF] transition pl-1">
-                Mot de passe oublie ?
-              </Link>
-            </div>
+            <input
+              name="password"
+              type="password"
+              className="primary px-[17px] w-full max-w-[170px] h-[51px] rounded-[4px] font-bold text-[0.875rem] text-[#BEBECE] bg-[#141433] border-2 border-[#141433] focus:border-[#2596FF] focus:outline-none transition-colors"
+              placeholder="Mot de passe"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              autoComplete="current-password"
+              required
+            />
           </div>
 
           <div className="box-buttons flex items-center gap-[10px]">
