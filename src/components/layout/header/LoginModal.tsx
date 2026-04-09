@@ -188,6 +188,16 @@ export default function LoginModal({ open, onClose, onLogin, onSwitchToRegister 
                             />
                         </div>
 
+                        <div className="text-right">
+                            <a
+                                href="/forgot-password"
+                                onClick={(e) => { e.preventDefault(); onClose(); window.location.href = '/forgot-password' }}
+                                className="text-xs text-[#2596FF] hover:underline"
+                            >
+                                Mot de passe oublie ?
+                            </a>
+                        </div>
+
                         <div className="flex flex-col gap-3 pt-2">
                             <Button
                                 type="submit"

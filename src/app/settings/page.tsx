@@ -1,0 +1,164 @@
+'use client'
+
+import { useState } from 'react'
+import { useSession } from 'next-auth/react'
+import { useRouter } from 'next/navigation'
+import { toast } from 'sonner'
+import { Lock, Eye, EyeOff } from 'lucide-react'
+
+export default function SettingsPage() {
+  const { data: session, status } = useSession()
+  const router = useRouter()
+  const [currentPassword, setCurrentPassword] = useState('')
+  const [newPassword, setNewPassword] = useState('')
+  const [confirmPassword, setConfirmPassword] = useState('')
+  const [submitting, setSubmitting] = useState(false)
+  const [showCurrent, setShowCurrent] = useState(false)
+  const [showNew, setShowNew] = useState(false)
+
+  if (status === 'loading') {
+    return (
+      <main className="mx-auto w-full max-w-[600px] px-4 py-10 sm:px-6">
+        <div className="h-[400px] animate-pulse rounded-[4px] bg-white/5" />
+      </main>
+    )
+  }
+
+  if (!session?.user) {
+    router.push('/login?from=/settings')
+    return null
+  }
+
+  const nick = (session.user as any)?.nick || 'Utilisateur'
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (submitting) return
+
+    if (newPassword.length < 6) {
+      toast.error('Le nouveau mot de passe doit faire au moins 6 caracteres')
+      return
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error('Les mots de passe ne correspondent pas')
+      return
+    }
+
+    setSubmitting(true)
+    try {
+      const res = await fetch('/api/user/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword, newPassword }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || 'Erreur')
+      toast.success('Mot de passe modifie avec succes')
+      setCurrentPassword('')
+      setNewPassword('')
+      setConfirmPassword('')
+    } catch (err: any) {
+      toast.error(err?.message || 'Erreur lors du changement de mot de passe')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  return (
+    <main className="mx-auto w-full max-w-[600px] space-y-6 px-4 py-10 sm:px-6">
+      <header className="flex h-[76px] items-center rounded-[4px] border border-black/60 bg-[#1F1F3E] px-5 shadow-[0_0_0_1px_rgba(255,255,255,0.05)]">
+        <div className="flex items-center gap-3">
+          <span className="material-icons text-[32px] text-[#DDD]">settings</span>
+          <h1 className="text-[18px] font-bold uppercase text-[#DDD] [text-shadow:0_1px_2px_rgba(0,0,0,0.5)]">
+            Parametres du compte
+          </h1>
+        </div>
+      </header>
+
+      <section className="rounded-[4px] border border-[#1F1F3E] bg-[#272746] p-6">
+        <div className="mb-5 flex items-center gap-3">
+          <Lock className="h-5 w-5 text-[#2596FF]" />
+          <h2 className="text-[16px] font-bold text-white">Changer le mot de passe</h2>
+        </div>
+
+        <p className="mb-5 text-[13px] text-[#BEBECE]/70">
+          Connecte en tant que <span className="font-bold text-[#2596FF]">{nick}</span>. Entre ton mot de passe actuel puis choisis un nouveau mot de passe.
+        </p>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="mb-1 block text-[11px] font-bold uppercase tracking-[0.08em] text-[#BEBECE]/70">
+              Mot de passe actuel
+            </label>
+            <div className="relative">
+              <input
+                type={showCurrent ? 'text' : 'password'}
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                required
+                placeholder="Ton mot de passe actuel"
+                className="h-[45px] w-full rounded-[4px] border border-[#141433] bg-[#25254D] px-4 pr-12 text-[14px] text-white placeholder:text-[#BEBECE]/40 focus:border-[#2596FF] focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => setShowCurrent(!showCurrent)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#BEBECE]/50 hover:text-white"
+              >
+                {showCurrent ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-[11px] font-bold uppercase tracking-[0.08em] text-[#BEBECE]/70">
+              Nouveau mot de passe
+            </label>
+            <div className="relative">
+              <input
+                type={showNew ? 'text' : 'password'}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                required
+                minLength={6}
+                placeholder="Minimum 6 caracteres"
+                className="h-[45px] w-full rounded-[4px] border border-[#141433] bg-[#25254D] px-4 pr-12 text-[14px] text-white placeholder:text-[#BEBECE]/40 focus:border-[#2596FF] focus:outline-none"
+              />
+              <button
+                type="button"
+                onClick={() => setShowNew(!showNew)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-[#BEBECE]/50 hover:text-white"
+              >
+                {showNew ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+              </button>
+            </div>
+          </div>
+
+          <div>
+            <label className="mb-1 block text-[11px] font-bold uppercase tracking-[0.08em] text-[#BEBECE]/70">
+              Confirmer le nouveau mot de passe
+            </label>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              required
+              minLength={6}
+              placeholder="Retape le nouveau mot de passe"
+              className="h-[45px] w-full rounded-[4px] border border-[#141433] bg-[#25254D] px-4 text-[14px] text-white placeholder:text-[#BEBECE]/40 focus:border-[#2596FF] focus:outline-none"
+            />
+          </div>
+
+          <div className="pt-2">
+            <button
+              type="submit"
+              disabled={submitting}
+              className="inline-flex h-[45px] items-center rounded-[4px] bg-[#2596FF] px-6 text-[12px] font-bold uppercase tracking-[0.04em] text-white transition hover:bg-[#2976E8] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {submitting ? 'Modification...' : 'Modifier le mot de passe'}
+            </button>
+          </div>
+        </form>
+      </section>
+    </main>
+  )
+}

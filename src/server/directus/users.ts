@@ -175,6 +175,20 @@ export async function upgradePasswordToBcrypt(userId: number, plain: string) {
   );
 }
 
+export async function changeUserPassword(userId: number, newPassword: string) {
+  return directusService.request(
+    uItem(USERS_TABLE as any, userId as any, {
+      senha: hashPassword(newPassword),
+    }),
+  );
+}
+
+export async function getUserById(userId: number) {
+  return directusService
+    .request(rItem(USERS_TABLE as any, userId as any, { fields: USER_FIELDS as any } as any))
+    .catch(() => null);
+}
+
 export async function updateUserVerification(
   userId: number,
   patch: Partial<{
