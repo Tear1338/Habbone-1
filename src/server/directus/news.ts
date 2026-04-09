@@ -192,15 +192,19 @@ export function listPublicNewsForCards(limit = 60): Promise<NewsRecord[]> {
   ) as Promise<NewsRecord[]>;
 }
 
-export function getPublicNewsComments(newsId: number): Promise<NewsCommentRecord[]> {
-  return directusService.request(
-    rItems('noticias_coment', {
-      filter: { id_noticia: { _eq: newsId } },
-      fields: ['id', 'id_noticia', 'comentario', 'autor', 'data', 'status'],
-      sort: ['data'],
-      limit: 200,
-    } as any),
-  ) as Promise<NewsCommentRecord[]>;
+export async function getPublicNewsComments(newsId: number): Promise<NewsCommentRecord[]> {
+  const url = new URL(`${directusUrl}/items/noticias_coment`);
+  url.searchParams.set('filter[id_noticia][_eq]', String(newsId));
+  url.searchParams.set('fields', 'id,id_noticia,comentario,autor,data,status');
+  url.searchParams.set('sort', 'data');
+  url.searchParams.set('limit', '200');
+  const res = await fetch(url.toString(), {
+    headers: { Authorization: `Bearer ${serviceToken}` },
+    cache: 'no-store',
+  });
+  if (!res.ok) return [];
+  const json = await res.json();
+  return Array.isArray(json?.data) ? json.data : [];
 }
 
 export async function listPublicNewsBadges(limitNews = 160, limitBadges = 220): Promise<NewsBadgeItem[]> {

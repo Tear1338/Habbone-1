@@ -21,7 +21,12 @@ export function parseTimestamp(value: unknown, options?: TimestampParseOptions):
   if (value instanceof Date) return value.getTime();
   if (typeof value === 'number') {
     if (!Number.isFinite(value)) return 0;
-    return numericMode === 'auto' ? (value > 1e12 ? value : value * 1000) : value;
+    if (numericMode === 'auto') {
+      if (value > 1e12) return value; // already milliseconds
+      if (value > 1e9) return value * 1000; // seconds -> milliseconds
+      return 0; // invalid (too small, like year 2025)
+    }
+    return value;
   }
   if (typeof value === 'string') {
     const trimmed = value.trim();

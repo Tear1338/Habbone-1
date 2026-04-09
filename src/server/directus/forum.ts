@@ -346,15 +346,19 @@ export function getPublicPostById(id: number): Promise<ForumPostRecord> {
   ) as Promise<ForumPostRecord>;
 }
 
-export function getPublicTopicComments(topicId: number): Promise<ForumCommentRecord[]> {
-  return directusService.request(
-    rItems('forum_coment', {
-      filter: { id_forum: { _eq: topicId } },
-      fields: ['id', 'id_forum', 'comentario', 'autor', 'data', 'status'],
-      sort: ['data'],
-      limit: 500,
-    } as any),
-  ) as Promise<ForumCommentRecord[]>;
+export async function getPublicTopicComments(topicId: number): Promise<ForumCommentRecord[]> {
+  const url = new URL(`${directusUrl}/items/forum_coment`);
+  url.searchParams.set('filter[id_forum][_eq]', String(topicId));
+  url.searchParams.set('fields', 'id,id_forum,comentario,autor,data,status');
+  url.searchParams.set('sort', 'data');
+  url.searchParams.set('limit', '500');
+  const res = await fetch(url.toString(), {
+    headers: { Authorization: `Bearer ${serviceToken}` },
+    cache: 'no-store',
+  });
+  if (!res.ok) return [];
+  const json = await res.json();
+  return Array.isArray(json?.data) ? json.data : [];
 }
 
 export function listPublicForumCategories(): Promise<ForumCategoryRecord[]> {
