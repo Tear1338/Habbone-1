@@ -2,12 +2,14 @@ export type SiteThemeSettings = {
   headerLogoUrl: string;
   headerBackgroundColor: string;
   headerBackgroundImageUrl: string | null;
+  showLogo: boolean;
 };
 
 export const DEFAULT_THEME_SETTINGS: SiteThemeSettings = {
   headerLogoUrl: '/img/HabbOne25_Logo_DefaultAnimated2_byLFM.gif',
   headerBackgroundColor: '#204E84',
   headerBackgroundImageUrl: null,
+  showLogo: true,
 };
 
 const MAX_URL_LENGTH = 512;
@@ -57,5 +59,6 @@ export function normalizeThemeSettings(input: unknown): SiteThemeSettings {
       source.headerBackgroundImageUrl,
       DEFAULT_THEME_SETTINGS.headerBackgroundImageUrl,
     ),
+    showLogo: typeof source.showLogo === 'boolean' ? source.showLogo : DEFAULT_THEME_SETTINGS.showLogo,
   };
 }

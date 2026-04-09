@@ -48,9 +48,9 @@ export default function Banner({ slow, initialTheme }: BannerProps) {
     return {
       backgroundColor: theme.headerBackgroundColor,
       backgroundImage,
-      backgroundPosition: 'center',
-      backgroundSize: 'cover',
-      backgroundRepeat: 'no-repeat',
+      backgroundPosition: 'center top',
+      backgroundSize: 'contain',
+      backgroundRepeat: 'repeat-x',
     }
   }, [theme.headerBackgroundColor, theme.headerBackgroundImageUrl])
 
@@ -64,13 +64,15 @@ export default function Banner({ slow, initialTheme }: BannerProps) {
       viewport={{ once: true }}
       transition={slow as any}
     >
-      {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img
-        src={theme.headerLogoUrl}
-        alt="HabbOne"
-        className="h-auto max-w-full"
-        loading="lazy"
-      />
+      {theme.showLogo !== false && (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img
+          src={theme.headerLogoUrl}
+          alt="HabbOne"
+          className="h-auto max-w-full"
+          loading="lazy"
+        />
+      )}
     </motion.section>
   )
 }

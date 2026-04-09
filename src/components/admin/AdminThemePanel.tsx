@@ -121,13 +121,15 @@ export default function AdminThemePanel() {
       {/* Preview */}
       <div className="rounded-[4px] border border-[#141433] bg-[#25254D] p-4">
         <p className="text-xs font-bold uppercase tracking-[0.08em] text-white">Apercu du header</p>
-        <div className="mt-3 rounded-[4px] border border-[#141433] p-4" style={previewStyle}>
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src={settings.headerLogoUrl}
-            alt="Logo header"
-            className="mx-auto block h-auto max-h-28 max-w-full"
-          />
+        <div className="mt-3 flex min-h-[120px] items-center justify-center rounded-[4px] border border-[#141433] p-4" style={previewStyle}>
+          {settings.showLogo !== false && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={settings.headerLogoUrl}
+              alt="Logo header"
+              className="mx-auto block h-auto max-h-28 max-w-full"
+            />
+          )}
         </div>
       </div>
 
@@ -169,6 +171,16 @@ export default function AdminThemePanel() {
               {uploading === "logo" ? "Upload..." : "Importer logo"}
             </Button>
           </div>
+
+          <label className="flex cursor-pointer items-center gap-2.5 rounded-[4px] border border-[#141433] bg-[#1F1F3E] px-3 py-2.5">
+            <input
+              type="checkbox"
+              checked={settings.showLogo !== false}
+              onChange={(e) => setSettings((prev) => ({ ...prev, showLogo: e.target.checked }))}
+              className="h-4 w-4 rounded border-[#141433] bg-[#25254D] accent-[#2596FF]"
+            />
+            <span className="text-[12px] font-bold text-[#DDD]">Afficher le logo sur le header</span>
+          </label>
         </div>
 
         <div className="space-y-3">
