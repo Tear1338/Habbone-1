@@ -51,18 +51,18 @@ const ADMIN_NOTIFICATIONS_TABLE = 'admin_notifications';
 
 export async function listShopItems(onlyActive = false): Promise<ShopItem[]> {
   try {
-    const filter = onlyActive ? { status: { _eq: 'ativo' } } : {};
+    const filter: Record<string, unknown> = onlyActive ? { status: { _eq: 'ativo' } } : {};
     const rows = await directus.request(
       rItems(SHOP_ITEMS_TABLE, {
-        filter,
+        ...(Object.keys(filter).length > 0 ? { filter } : {}),
         sort: ['-date_created'],
         limit: 500,
         fields: ['id', 'nome', 'descricao', 'imagem', 'preco', 'estoque', 'status', 'date_created', 'date_updated'],
       })
     );
     return (rows || []) as ShopItem[];
-  } catch (error) {
-    console.error('[Shop] Failed to list items:', error);
+  } catch (error: any) {
+    console.error('[Shop] Failed to list items:', error?.message || error);
     return [];
   }
 }
@@ -82,11 +82,14 @@ export async function getShopItem(id: number): Promise<ShopItem | null> {
 
 export async function createShopItem(data: Omit<ShopItem, 'id' | 'date_created' | 'date_updated'>): Promise<ShopItem | null> {
   try {
+    console.log('[Shop] Creating item:', JSON.stringify(data));
     const row = await directus.request(cItem(SHOP_ITEMS_TABLE, data));
+    console.log('[Shop] Created item result:', JSON.stringify(row));
     return (row || null) as ShopItem | null;
-  } catch (error) {
-    console.error('[Shop] Failed to create item:', error);
-    return null;
+  } catch (error: any) {
+    console.error('[Shop] Failed to create item:', error?.message || error);
+    // Re-throw so the API route can return the actual error message
+    throw error;
   }
 }
 

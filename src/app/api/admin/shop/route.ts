@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { assertAdmin } from '@/server/authz';
+
+// Force dynamic — never cache admin API routes
+export const dynamic = 'force-dynamic';
 import {
   listShopItems,
   createShopItem,
@@ -58,11 +61,17 @@ export async function POST(req: Request) {
   if (action === 'create') {
     const parsed = ItemSchema.safeParse(body);
     if (!parsed.success) {
+      console.error('[Shop API] Validation failed:', parsed.error.issues);
       return NextResponse.json({ error: parsed.error.issues[0]?.message || 'Données invalides' }, { status: 400 });
     }
-    const item = await createShopItem(parsed.data);
-    if (!item) return NextResponse.json({ error: 'Création échouée' }, { status: 500 });
-    return NextResponse.json({ ok: true, data: item });
+    try {
+      const item = await createShopItem(parsed.data);
+      if (!item) return NextResponse.json({ error: 'Création échouée — vérifiez que la table shop_items existe dans Directus' }, { status: 500 });
+      return NextResponse.json({ ok: true, data: item });
+    } catch (e: any) {
+      console.error('[Shop API] Create failed:', e);
+      return NextResponse.json({ error: e?.message || 'Erreur de création' }, { status: 500 });
+    }
   }
 
   // ── Update item ──
