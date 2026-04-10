@@ -2,7 +2,7 @@
 
 import { createContext, useContext, useState, type ReactNode } from 'react';
 
-export type AdminView = 'overview' | 'users' | 'content' | 'theme' | 'roles' | 'pub';
+export type AdminView = 'overview' | 'users' | 'content' | 'theme' | 'roles' | 'pub' | 'shop';
 
 interface AdminContextValue {
   view: AdminView;

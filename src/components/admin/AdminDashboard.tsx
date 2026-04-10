@@ -21,6 +21,7 @@ import AdminRolesPanel from '@/components/admin/AdminRolesPanel';
 import AdminThemePanel from '@/components/admin/AdminThemePanel';
 import AdminUsersPanel from '@/components/admin/AdminUsersPanel';
 import AdminPubPanel from '@/components/admin/AdminPubPanel';
+import AdminShopPanel from '@/components/admin/AdminShopPanel';
 import type {
   ForumCommentRecord as AdminForumComment,
   ForumPostRecord as AdminPost,
@@ -255,6 +256,16 @@ export default function AdminDashboard(props: AdminDashboardProps) {
           <div className="rounded-[8px] border border-white/5 bg-[#141433]/50 p-5">
             <AdminPubPanel />
           </div>
+        </div>
+      )}
+
+      {/* ── Boutique ── */}
+      {view === 'shop' && (
+        <div className="space-y-4">
+          <h2 className="text-[20px] font-bold text-white">
+            Gestion de la boutique
+          </h2>
+          <AdminShopPanel />
         </div>
       )}
     </div>
