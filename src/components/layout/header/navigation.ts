@@ -12,6 +12,7 @@ export const navigation: NavEntry[] = [
     label: 'HabbOne',
     children: [
       { label: 'Tous les articles', href: '/news' },
+      { label: 'Boutique', href: '/boutique' },
       { label: 'Equipe', href: '/team' },
       { label: 'Partenaires', href: '/partenaires' },
       { label: 'Communaute Discord', href: 'https://discord.gg/s4NpDcgcWe', external: true },
