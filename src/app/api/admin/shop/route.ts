@@ -1,17 +1,17 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
 import { assertAdmin } from '@/server/authz';
-
-// Force dynamic — never cache admin API routes
-export const dynamic = 'force-dynamic';
+import { directusUrl, serviceToken } from '@/server/directus/client';
 import {
-  listShopItems,
   createShopItem,
   updateShopItem,
   deleteShopItem,
   listShopOrders,
   updateShopOrder,
 } from '@/server/directus/shop';
+
+// Force dynamic — never cache admin API routes
+export const dynamic = 'force-dynamic';
 
 const ItemSchema = z.object({
   nome: z.string().min(1).max(200),
@@ -39,8 +39,24 @@ export async function GET(req: Request) {
     return NextResponse.json({ ok: true, ...result });
   }
 
-  const items = await listShopItems(false); // all items including inactive
-  return NextResponse.json({ ok: true, data: items });
+  // Bypass SDK — fetch directly from Directus REST API (SDK may silently fail on Vercel)
+  try {
+    const url = `${directusUrl}/items/shop_items?sort=-date_created&limit=500&fields=id,nome,descricao,imagem,preco,estoque,status,date_created,date_updated`;
+    const res = await fetch(url, {
+      headers: { Authorization: `Bearer ${serviceToken}` },
+      cache: 'no-store',
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      console.error('[Admin Shop GET] Directus error:', res.status, body);
+      return NextResponse.json({ ok: true, data: [] });
+    }
+    const json = await res.json();
+    return NextResponse.json({ ok: true, data: json?.data ?? [] });
+  } catch (e: any) {
+    console.error('[Admin Shop GET] Error:', e?.message);
+    return NextResponse.json({ ok: true, data: [] });
+  }
 }
 
 export async function POST(req: Request) {
