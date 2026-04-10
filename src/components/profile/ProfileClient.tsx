@@ -16,7 +16,7 @@ import { ProfileTabs } from "./modules/ProfileTabs";
 import { BadgeIcon } from "./modules/BadgeIcon";
 
 import { mediaUrl } from "@/lib/media-url";
-import { buildHabboAvatarUrl } from "@/lib/habbo-imaging";
+import { buildHabboAvatarUrl, badgeImageUrl, groupBadgeUrl, badgeCodeFromEntry } from "@/lib/habbo-imaging";
 import { useHabboProfile } from "@/lib/use-habbo-profile";
 import { formatDateTime } from "@/lib/date-utils";
 import { stripHtml } from "@/lib/text-utils";
@@ -44,24 +44,6 @@ type ArticleCard = {
   autor?: string;
   data?: string | number | null;
 };
-
-function badgeImageFromCode(code: string) {
-  if (!code) return "";
-  return `https://images.habbo.com/c_images/album1584/${code}.gif`;
-}
-
-function buildGroupBadgeUrl(badgeCode: string) {
-  const base = process.env.NEXT_PUBLIC_HABBO_BASE || "https://www.habbo.fr";
-  return `${base}/habbo-imaging/badge/${badgeCode}.gif`;
-}
-
-function badgeCodeFromEntry(b: HabboBadge): string {
-  return (
-    (b?.code || b?.badgeCode || b?.badge_code || b?.badge?.code || "")
-      .toString()
-      .trim()
-  );
-}
 
 export default function ProfileClient({ nick }: { nick: string }) {
   const { data, error, loading, refresh } = useHabboProfile(nick, {
@@ -260,7 +242,7 @@ export default function ProfileClient({ nick }: { nick: string }) {
       return selected
         .map((b) => {
           const code = (b?.badgeCode || "").trim();
-          return code ? badgeImageFromCode(code) : "";
+          return code ? badgeImageUrl(code) : "";
         })
         .filter(Boolean);
     }
@@ -276,7 +258,7 @@ export default function ProfileClient({ nick }: { nick: string }) {
           "";
         if (typeof direct === "string" && direct.trim()) return direct;
         const code = badgeCodeFromEntry(badge);
-        return code ? badgeImageFromCode(code) : "";
+        return code ? badgeImageUrl(code) : "";
       })
       .filter(Boolean);
   }, [headerUser?.selectedBadges, data?.badges]);
@@ -621,7 +603,7 @@ export default function ProfileClient({ nick }: { nick: string }) {
                             {g?.badgeCode ? (
                               /* eslint-disable-next-line @next/next/no-img-element */
                               <img
-                                src={buildGroupBadgeUrl(g.badgeCode)}
+                                src={groupBadgeUrl(g.badgeCode)}
                                 alt={`Insigne ${g.name || ""}`}
                                 className="h-12 w-12 image-pixelated"
                                 loading="lazy"

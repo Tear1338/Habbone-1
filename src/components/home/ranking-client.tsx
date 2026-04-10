@@ -3,7 +3,7 @@
 import { useState, useMemo } from 'react'
 import Link from 'next/link'
 import { MessageSquare, FileText, MessagesSquare, Coins, Trophy } from 'lucide-react'
-import { buildHabboAvatarUrl } from '@/lib/habbo-imaging'
+import { habboAvatarSmile } from '@/lib/habbo-imaging'
 
 type RankingEntry = { nick: string; score: number }
 type Category = 'comments' | 'articles' | 'topics' | 'coins'
@@ -19,21 +19,10 @@ const TABS: { key: Category; label: string; icon: React.ReactNode }[] = [
 
 const MEDAL_COLORS = ['text-[#FFD700]', 'text-[#C0C0C0]', 'text-[#CD7F32]']
 
-function avatarUrl(nick: string) {
-  return buildHabboAvatarUrl(nick, {
-    direction: 2,
-    head_direction: 3,
-    img_format: 'png',
-    gesture: 'sml',
-    headonly: 0,
-    size: 'l',
-  })
-}
-
 function AvatarImg({ nick, className, headonly = false }: { nick: string; className: string; headonly?: boolean }) {
   const src = headonly
-    ? buildHabboAvatarUrl(nick, { direction: 2, head_direction: 3, headonly: 1, size: 's', img_format: 'png' })
-    : avatarUrl(nick)
+    ? habboAvatarSmile(nick, true)
+    : habboAvatarSmile(nick)
 
   return (
     // eslint-disable-next-line @next/next/no-img-element

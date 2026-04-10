@@ -3,7 +3,7 @@ import React, { useState } from "react"
 import Link from "next/link"
 import { toast } from "sonner"
 import { Heart, Flag } from "lucide-react"
-import { buildHabboAvatarUrl } from "@/lib/habbo-imaging"
+import { habboAvatarSmile } from "@/lib/habbo-imaging"
 
 type CommentBubbleProps = {
   id?: number
@@ -20,15 +20,7 @@ type CommentBubbleProps = {
 }
 
 function habboHeadUrl(nick?: string) {
-  const safe = String(nick || "").trim()
-  return buildHabboAvatarUrl(safe, {
-    direction: 2,
-    head_direction: 3,
-    img_format: "png",
-    gesture: "sml",
-    headonly: 1,
-    size: "l",
-  })
+  return habboAvatarSmile(String(nick || "").trim(), true)
 }
 
 export default function CommentBubble({
