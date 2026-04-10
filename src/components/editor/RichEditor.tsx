@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { EditorContent, useEditor } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
 import Placeholder from "@tiptap/extension-placeholder";
@@ -62,6 +62,8 @@ export default function RichEditor({
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [html, setHtml] = useState<string>(initialHTML || "");
   const [showEmojis, setShowEmojis] = useState(false);
+  const [showLinkModal, setShowLinkModal] = useState(false);
+  const [linkUrl, setLinkUrl] = useState("");
 
   const extensions: any[] = [
     StarterKit.configure({
@@ -107,7 +109,7 @@ export default function RichEditor({
     editorProps: {
       attributes: {
         class:
-          `prose prose-invert max-w-none ${variant === "comment" ? "min-h-[100px]" : "min-h-[200px]"} rounded-md border border-[color:var(--bg-800)] bg-[color:var(--bg-600)] p-3 focus:outline-none`,
+          `max-w-none ${variant === "comment" ? "min-h-[100px]" : "min-h-[200px]"} rounded-md border border-[color:var(--bg-800)] bg-[color:var(--bg-600)] p-3 focus:outline-none`,
       },
     },
   });
@@ -194,7 +196,7 @@ export default function RichEditor({
                 }
               }}
             />
-            <ToolbarButton active={editor?.isActive("link")} label="Lien (Ctrl+K)" onClick={(e) => { e.preventDefault(); const url = prompt("URL du lien"); if (url) editor?.chain().focus().extendMarkRange("link").setLink({ href: url }).run(); }}>
+            <ToolbarButton active={editor?.isActive("link")} label="Lien (Ctrl+K)" onClick={(e) => { e.preventDefault(); setLinkUrl(editor?.getAttributes("link")?.href || ""); setShowLinkModal(true); }}>
               <LinkIcon className="h-3.5 w-3.5" />
             </ToolbarButton>
           </>
@@ -239,6 +241,206 @@ export default function RichEditor({
       </div>
 
       <EditorContent editor={editor} />
+
+      {/* ProseMirror content styles — remplace le plugin @tailwindcss/typography absent */}
+      <style>{`
+        .ProseMirror { color: #fff; line-height: 1.65; }
+        .ProseMirror:focus { outline: none; }
+        .ProseMirror > * + * { margin-top: 0.6em; }
+
+        /* Placeholder */
+        .ProseMirror p.is-editor-empty:first-child::before {
+          content: attr(data-placeholder);
+          float: left;
+          color: rgba(190,190,206,0.35);
+          pointer-events: none;
+          height: 0;
+        }
+
+        /* Headings */
+        .ProseMirror h1 { font-size: 1.6em; font-weight: 700; line-height: 1.2; margin-top: 1em; }
+        .ProseMirror h2 { font-size: 1.35em; font-weight: 700; line-height: 1.25; margin-top: 0.9em; }
+        .ProseMirror h3 { font-size: 1.15em; font-weight: 700; line-height: 1.3; margin-top: 0.8em; }
+
+        /* Lists — bullet */
+        .ProseMirror ul {
+          list-style-type: disc;
+          padding-left: 1.5em;
+          margin-top: 0.4em;
+          margin-bottom: 0.4em;
+        }
+        .ProseMirror ul ul { list-style-type: circle; }
+        .ProseMirror ul ul ul { list-style-type: square; }
+
+        /* Lists — ordered */
+        .ProseMirror ol {
+          list-style-type: decimal;
+          padding-left: 1.5em;
+          margin-top: 0.4em;
+          margin-bottom: 0.4em;
+        }
+        .ProseMirror ol ol { list-style-type: lower-alpha; }
+        .ProseMirror ol ol ol { list-style-type: lower-roman; }
+
+        /* List items */
+        .ProseMirror li {
+          display: list-item;
+          margin-top: 0.15em;
+          margin-bottom: 0.15em;
+        }
+        .ProseMirror li p { margin: 0; }
+        .ProseMirror li > ul,
+        .ProseMirror li > ol { margin-top: 0.2em; }
+
+        /* Blockquote */
+        .ProseMirror blockquote {
+          border-left: 3px solid #2596FF;
+          padding-left: 1em;
+          margin-left: 0;
+          margin-right: 0;
+          margin-top: 0.6em;
+          margin-bottom: 0.6em;
+          color: rgba(190,190,206,0.8);
+          font-style: italic;
+        }
+        .ProseMirror blockquote p { margin: 0; }
+
+        /* Horizontal rule */
+        .ProseMirror hr {
+          border: none;
+          border-top: 1px solid rgba(255,255,255,0.1);
+          margin: 1em 0;
+        }
+
+        /* Code inline */
+        .ProseMirror code {
+          background: rgba(255,255,255,0.08);
+          border-radius: 3px;
+          padding: 0.15em 0.35em;
+          font-size: 0.9em;
+          font-family: ui-monospace, monospace;
+        }
+
+        /* Code block */
+        .ProseMirror pre {
+          background: #141433;
+          border: 1px solid rgba(255,255,255,0.05);
+          border-radius: 6px;
+          padding: 0.8em 1em;
+          overflow-x: auto;
+          margin: 0.6em 0;
+        }
+        .ProseMirror pre code {
+          background: none;
+          padding: 0;
+          border-radius: 0;
+          font-size: 0.85em;
+          color: #BEBECE;
+        }
+
+        /* Links */
+        .ProseMirror a {
+          color: #2596FF;
+          text-decoration: underline;
+          text-underline-offset: 2px;
+          cursor: pointer;
+        }
+        .ProseMirror a:hover { color: #25B1FF; }
+
+        /* Images */
+        .ProseMirror img {
+          max-width: 100%;
+          height: auto;
+          border-radius: 6px;
+          margin: 0.5em 0;
+        }
+
+        /* Task list */
+        .ProseMirror ul[data-type="taskList"] {
+          list-style: none;
+          padding-left: 0;
+        }
+        .ProseMirror ul[data-type="taskList"] li {
+          display: flex;
+          align-items: flex-start;
+          gap: 0.5em;
+        }
+        .ProseMirror ul[data-type="taskList"] li label input[type="checkbox"] {
+          margin-top: 0.3em;
+          accent-color: #2596FF;
+        }
+
+        /* Highlight */
+        .ProseMirror mark {
+          background-color: rgba(255,200,0,0.3);
+          border-radius: 2px;
+          padding: 0.05em 0.15em;
+        }
+
+        /* Text align */
+        .ProseMirror .has-text-align-center { text-align: center; }
+        .ProseMirror .has-text-align-right { text-align: right; }
+        .ProseMirror [style*="text-align: center"] { text-align: center; }
+        .ProseMirror [style*="text-align: right"] { text-align: right; }
+      `}</style>
+
+      {/* Link modal */}
+      {showLinkModal && (
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowLinkModal(false)}>
+          <div className="w-full max-w-[400px] rounded-[8px] border border-[color:var(--bg-700)] bg-[color:var(--bg-900)] p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="mb-3 text-[14px] font-bold text-white">Inserer un lien</h3>
+            <input
+              type="url"
+              value={linkUrl}
+              onChange={(e) => setLinkUrl(e.target.value)}
+              placeholder="https://..."
+              autoFocus
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  if (linkUrl.trim()) {
+                    editor?.chain().focus().extendMarkRange("link").setLink({ href: linkUrl.trim() }).run();
+                  } else {
+                    editor?.chain().focus().extendMarkRange("link").unsetLink().run();
+                  }
+                  setShowLinkModal(false);
+                }
+              }}
+              className="mb-3 h-[40px] w-full rounded-[4px] border border-[color:var(--bg-700)] bg-[color:var(--bg-800)] px-3 text-[13px] text-white placeholder:text-[color:var(--foreground)]/30 focus:border-[#2596FF] focus:outline-none"
+            />
+            <div className="flex items-center justify-end gap-2">
+              {editor?.isActive("link") && (
+                <button
+                  type="button"
+                  onClick={() => { editor?.chain().focus().extendMarkRange("link").unsetLink().run(); setShowLinkModal(false); }}
+                  className="rounded-[4px] border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-[11px] font-bold text-red-400 hover:bg-red-500/20"
+                >
+                  Supprimer le lien
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => setShowLinkModal(false)}
+                className="rounded-[4px] bg-[color:var(--bg-700)] px-3 py-1.5 text-[11px] font-bold text-[color:var(--foreground)]/60 hover:text-white"
+              >
+                Annuler
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (linkUrl.trim()) {
+                    editor?.chain().focus().extendMarkRange("link").setLink({ href: linkUrl.trim() }).run();
+                  }
+                  setShowLinkModal(false);
+                }}
+                className="rounded-[4px] bg-[#2596FF] px-3 py-1.5 text-[11px] font-bold text-white hover:bg-[#2976E8]"
+              >
+                Appliquer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
