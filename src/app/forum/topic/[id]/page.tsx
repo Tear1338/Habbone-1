@@ -21,7 +21,9 @@ import { stripHtml } from "@/lib/text-utils";
 import { formatDateTimeFromAny } from "@/lib/date-utils";
 import styles from "@/components/forum/forum-content.module.css";
 
-export const revalidate = 30;
+import { unstable_cache } from 'next/cache';
+
+export const revalidate = 300;
 
 type TopicPageProps = {
   params: Promise<{ id: string }>;
@@ -62,17 +64,22 @@ export default async function TopicPage(props: TopicPageProps) {
     );
   }
 
-  const [topic, commentsRaw, session, voteSummary]: [
+  const getCachedTopicData = unstable_cache(
+    () => Promise.all([
+      getPublicTopicById(topicId).catch(() => null),
+      getPublicTopicComments(topicId).catch(() => []),
+      getTopicVoteSummary(topicId).catch(() => ({ up: 0, down: 0 })),
+    ]),
+    [`forum-topic-${topicId}`],
+    { tags: ['forum', `forum-topic-${topicId}`], revalidate: 300 }
+  );
+
+  const [topic, commentsRaw, voteSummary] = await getCachedTopicData() as [
     ForumTopicRecord | null,
     unknown,
-    Awaited<ReturnType<typeof getServerSession>>,
     { up: number; down: number },
-  ] = await Promise.all([
-    getPublicTopicById(topicId).catch(() => null),
-    getPublicTopicComments(topicId).catch(() => []),
-    getServerSession(authOptions),
-    getTopicVoteSummary(topicId).catch(() => ({ up: 0, down: 0 })),
-  ]);
+  ];
+  const session = await getServerSession(authOptions);
 
   if (!topic) {
     return (

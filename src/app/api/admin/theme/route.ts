@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { z } from 'zod';
 import { assertAdmin } from '@/server/authz';
 import { readThemeSettings, writeThemeSettings } from '@/server/theme-settings-store';
@@ -58,6 +59,7 @@ export async function POST(req: Request) {
 
   try {
     const data = await writeThemeSettings(parsed.data);
+    revalidateTag('theme');
     return NextResponse.json({ data });
   } catch (error: any) {
     return NextResponse.json(

@@ -1,8 +1,15 @@
+import { unstable_cache } from 'next/cache'
 import { getPublicTopics } from '@/server/directus/forum'
 import ForumTopicsClient from './forum-topics-client'
 
+const getCachedTopics = unstable_cache(
+  () => getPublicTopics(7).catch(() => []),
+  ['home-forum-topics'],
+  { tags: ['forum', 'home'], revalidate: 300 }
+)
+
 export default async function ForumTopics() {
-    const topics = await getPublicTopics(7).catch(() => []) as any[]
+    const topics = await getCachedTopics() as any[]
     const data = Array.isArray(topics)
         ? topics.map((t: any) => ({
             id: Number(t.id),

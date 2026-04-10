@@ -1,8 +1,11 @@
 import { NextResponse } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import { z } from 'zod'
 import { assertAdmin } from '@/server/authz'
 import { directusUrl, serviceToken } from '@/server/directus/client'
 import { checkRateLimit } from '@/server/rate-limit'
+
+export const dynamic = 'force-dynamic';
 
 // GET: list all pubs
 export async function GET(req: Request) {
@@ -65,6 +68,8 @@ export async function POST(req: Request) {
       headers: { Authorization: `Bearer ${serviceToken}` },
     })
     if (!res.ok && res.status !== 204) return NextResponse.json({ error: 'DELETE_FAILED' }, { status: 500 })
+    revalidateTag('pub');
+    revalidateTag('home');
     return NextResponse.json({ ok: true })
   }
 
@@ -80,6 +85,8 @@ export async function POST(req: Request) {
     })
     if (!res.ok) return NextResponse.json({ error: 'UPDATE_FAILED' }, { status: 500 })
     const json = await res.json()
+    revalidateTag('pub');
+    revalidateTag('home');
     return NextResponse.json({ ok: true, data: json?.data })
   }
 
@@ -101,5 +108,7 @@ export async function POST(req: Request) {
   })
   if (!res.ok) return NextResponse.json({ error: 'CREATE_FAILED' }, { status: 500 })
   const json = await res.json()
+  revalidateTag('pub');
+  revalidateTag('home');
   return NextResponse.json({ ok: true, data: json?.data })
 }

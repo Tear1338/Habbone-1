@@ -6,7 +6,7 @@ import LatestBadges from "@/components/home/latest-mobis";
 import Publicite from "@/components/home/publicite";
 import Ranking from "@/components/home/ranking";
 
-export const revalidate = 60;
+export const revalidate = 300;
 
 export default function Home() {
   return (

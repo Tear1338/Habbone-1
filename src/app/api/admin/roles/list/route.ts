@@ -4,6 +4,8 @@ import { listRoles } from '@/server/directus/roles';
 import { DEFAULT_ROLES } from '@/lib/config/roles';
 import { resolveHttpError } from '@/lib/http-error';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     await assertAdmin();

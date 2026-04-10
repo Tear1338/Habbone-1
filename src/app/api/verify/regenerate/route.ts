@@ -6,6 +6,8 @@ import { parseTimestamp } from '@/lib/date-utils'
 import * as logger from '@/server/logger'
 import { checkRateLimit } from '@/server/rate-limit'
 
+export const dynamic = 'force-dynamic';
+
 const RETURN_VERIFICATION_CODE =
   process.env.NODE_ENV !== 'production' &&
   String(process.env.RETURN_VERIFICATION_CODE || 'false').toLowerCase() !== 'false';

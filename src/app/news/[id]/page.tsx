@@ -18,7 +18,9 @@ import ContentWithLightbox from "@/components/ui/image-lightbox"
 import { getRoleBadgesForNicks } from "@/server/directus/badges"
 import ClickableImage from "@/components/ui/clickable-image"
 
-export const revalidate = 60
+import { unstable_cache } from 'next/cache'
+
+export const revalidate = 300
 
 type NewsDetailProps = {
   params: Promise<{ id: string }>
@@ -36,9 +38,20 @@ export default async function NewsDetailPage(props: NewsDetailProps) {
     )
   }
 
+  const getCachedNewsItem = unstable_cache(
+    () => getPublicNewsById(newsId).catch(() => null),
+    [`news-detail-${newsId}`],
+    { tags: ['news', `news-${newsId}`], revalidate: 300 }
+  )
+  const getCachedComments = unstable_cache(
+    () => getPublicNewsComments(newsId).catch(() => []),
+    [`news-comments-${newsId}`],
+    { tags: ['news', `news-${newsId}`], revalidate: 300 }
+  )
+
   const [newsItem, commentsRaw, session]: [NewsRecord | null, unknown, Session | null] = await Promise.all([
-    getPublicNewsById(newsId).catch(() => null),
-    getPublicNewsComments(newsId).catch(() => []),
+    getCachedNewsItem(),
+    getCachedComments(),
     getServerSession(authOptions),
   ])
 

@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { assertAdmin } from '@/server/authz';
 import { directusUrl } from '@/server/directus/client';
 import { uploadFileToDirectus } from '@/server/directus/stories';
@@ -93,6 +94,7 @@ export async function POST(req: Request) {
         : { headerBackgroundImageUrl: uploadedUrl },
     );
 
+    revalidateTag('theme');
     return NextResponse.json({
       data: {
         url: uploadedUrl,

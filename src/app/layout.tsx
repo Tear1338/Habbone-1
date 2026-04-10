@@ -6,6 +6,7 @@ import Providers from '@/components/Providers';
 import AppShell from '@/components/layout/app-shell';
 import Footer from '@/components/layout/footer';
 import HeaderTW from '@/components/layout/header-tw';
+import { unstable_cache } from 'next/cache';
 import { readThemeSettings } from '@/server/theme-settings-store';
 import SonnerClient from '@/components/ui/sonner-client';
 import MotionProvider from '@/components/motion/motion-provider';
@@ -54,7 +55,12 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
-  const initialTheme = await readThemeSettings().catch(() => undefined);
+  const getCachedTheme = unstable_cache(
+    () => readThemeSettings().catch(() => undefined),
+    ['theme-settings'],
+    { tags: ['theme'], revalidate: 300 }
+  );
+  const initialTheme = await getCachedTheme();
 
   return (
     <html lang="fr" className="dark">

@@ -1,8 +1,15 @@
 import { mediaUrl } from '@/lib/media-url'
 import { parseTimestamp } from '@/lib/date-utils'
 
+import { unstable_cache } from 'next/cache'
 import { listStoriesService } from '@/server/directus/stories'
 import StoriesClient from './stories-client'
+
+const getCachedStories = unstable_cache(
+  () => listStoriesService(30).catch(() => []),
+  ['home-stories'],
+  { tags: ['stories', 'home'], revalidate: 300 }
+)
 
 function toTimestamp(value: unknown): number {
   if (value == null || value === '') return 0
@@ -32,7 +39,7 @@ function resolveStoryTimestamp(row: Record<string, any>): number {
 
 export default async function Stories() {
   // Use server-side service token to ensure visibility even if collection isn't public
-  const rows = (await listStoriesService(30).catch(() => [])) as any[]
+  const rows = (await getCachedStories()) as any[]
   const items = Array.isArray(rows)
     ? rows
       .map((r: any) => {

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { z } from 'zod';
 import { assertAdmin } from '@/server/authz';
 import { directusUrl, serviceToken } from '@/server/directus/client';
@@ -83,6 +84,7 @@ export async function POST(req: Request) {
     try {
       const item = await createShopItem(parsed.data);
       if (!item) return NextResponse.json({ error: 'Création échouée — vérifiez que la table shop_items existe dans Directus' }, { status: 500 });
+      revalidateTag('shop');
       return NextResponse.json({ ok: true, data: item });
     } catch (e: any) {
       console.error('[Shop API] Create failed:', e);
@@ -97,6 +99,7 @@ export async function POST(req: Request) {
     const { action: _, id: __, ...patch } = body;
     const item = await updateShopItem(id, patch);
     if (!item) return NextResponse.json({ error: 'Mise à jour échouée' }, { status: 500 });
+    revalidateTag('shop');
     return NextResponse.json({ ok: true, data: item });
   }
 
@@ -106,6 +109,7 @@ export async function POST(req: Request) {
     if (!id) return NextResponse.json({ error: 'ID requis' }, { status: 400 });
     const ok = await deleteShopItem(id);
     if (!ok) return NextResponse.json({ error: 'Suppression échouée' }, { status: 500 });
+    revalidateTag('shop');
     return NextResponse.json({ ok: true });
   }
 
@@ -118,6 +122,7 @@ export async function POST(req: Request) {
     }
     const order = await updateShopOrder(id, { status });
     if (!order) return NextResponse.json({ error: 'Mise à jour échouée' }, { status: 500 });
+    revalidateTag('shop');
     return NextResponse.json({ ok: true, data: order });
   }
 

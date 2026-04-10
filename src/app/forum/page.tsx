@@ -12,7 +12,9 @@ import type {
 import { parseTimestamp } from '@/lib/date-utils'
 import { buildExcerptFromHtml, buildPreviewText, stripHtml } from '@/lib/text-utils'
 
-export const revalidate = 60
+import { unstable_cache } from 'next/cache'
+
+export const revalidate = 300
 
 type ForumPageProps = {
   searchParams?: Promise<Record<string, string | string[]>>
@@ -208,11 +210,17 @@ export default async function ForumPage({ searchParams }: ForumPageProps) {
   const isAllView = computeIsAllView(resolvedSearchParams.view)
   const searchTerm = readQuery(resolvedSearchParams.q).toLowerCase()
 
-  const [rawCategories, rawTopics, rawComments] = await Promise.all([
-    listForumCategoriesService().catch(() => [] as unknown),
-    listForumTopicsWithCategories(500).catch(() => [] as unknown),
-    adminListForumComments(2000).catch(() => [] as unknown),
-  ])
+  const getCachedForumData = unstable_cache(
+    () => Promise.all([
+      listForumCategoriesService().catch(() => [] as unknown),
+      listForumTopicsWithCategories(500).catch(() => [] as unknown),
+      adminListForumComments(2000).catch(() => [] as unknown),
+    ]),
+    ['forum-page-data'],
+    { tags: ['forum'], revalidate: 300 }
+  )
+
+  const [rawCategories, rawTopics, rawComments] = await getCachedForumData()
 
   const categories = Array.isArray(rawCategories) ? (rawCategories as ForumCategoryRecord[]) : []
   const topics = Array.isArray(rawTopics) ? (rawTopics as ForumTopicRecord[]) : []

@@ -1,8 +1,15 @@
+import { unstable_cache } from "next/cache"
 import { listPublicNewsForCards } from "@/server/directus/news"
 import LatestArticlesClient from "./latest-articles-client"
 
+const getCachedNews = unstable_cache(
+  () => listPublicNewsForCards(60).catch(() => []),
+  ['home-news-cards'],
+  { tags: ['news', 'home'], revalidate: 300 }
+)
+
 export default async function LatestArticles() {
-  const items = await listPublicNewsForCards(60).catch(() => []) as any[]
+  const items = await getCachedNews() as any[]
   // Normalize minimal shape
   const data = Array.isArray(items)
     ? items.map((n: any) => ({ id: Number(n.id), titulo: n.titulo, descricao: n.descricao ?? null, imagem: n.imagem ?? null }))

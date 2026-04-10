@@ -5,7 +5,7 @@ import {
 import { getLikesMapForTopicComments } from '@/server/directus/likes';
 import { formatDateTimeSmart } from '@/lib/date-utils';
 
-export const revalidate = 30;
+export const revalidate = 300;
 
 export default async function PostPage(props: { params: Promise<{ id: string }> }) {
   const { id } = await props.params;

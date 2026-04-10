@@ -4,6 +4,8 @@ import { getUserByNick, listUsersByNick, normalizeHotelCode } from '@/server/dir
 import { CheckUserQuerySchema, searchParamsToObject, formatZodError, buildError } from '@/types/api'
 import { checkRateLimit } from '@/server/rate-limit'
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: Request) {
   try {
     // Soften but protect: 60 hits / 10 minutes per IP

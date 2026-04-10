@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import { getServerSession } from 'next-auth'
 import { z } from 'zod'
 import { authOptions } from '@/auth'
 import { uploadFileToDirectus, createStoryRow, countStoriesThisMonthByAuthor } from '@/server/directus/stories'
 import { checkRateLimit } from '@/server/rate-limit'
 import { buildError, formatZodError } from '@/types/api'
+
+export const dynamic = 'force-dynamic';
 
 const ALLOWED_MIME_SET = new Set(['image/png', 'image/jpeg', 'image/gif'])
 const MAX_FILE_BYTES = 10 * 1024 * 1024 // 10MB
@@ -56,6 +59,8 @@ export async function POST(req: Request): Promise<NextResponse> {
     const storyId =
       story && typeof story === 'object' && story !== null ? (story as { id?: unknown }).id : null
 
+    revalidateTag('stories')
+    revalidateTag('home')
     return NextResponse.json({ ok: true, id: storyId != null ? String(storyId) : null })
   } catch (unknownError: unknown) {
     const message = unknownError instanceof Error ? unknownError.message : String(unknownError)

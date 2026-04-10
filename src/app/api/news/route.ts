@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import { getServerSession } from 'next-auth'
 import { z } from 'zod'
 import { authOptions } from '@/auth'
 import { adminCreateNews } from '@/server/directus/news'
 import { checkRateLimit } from '@/server/rate-limit'
 import { sanitizeRichContentHtml, sanitizePlainText } from '@/server/comment-sanitize'
+
+export const dynamic = 'force-dynamic';
 
 const NewsBodySchema = z.object({
   titulo: z.string().min(3, 'Titre trop court (min. 3 caractères)').max(200, 'Titre trop long'),
@@ -52,6 +55,8 @@ export async function POST(req: Request): Promise<NextResponse> {
     })
 
     const id = article && typeof article === 'object' ? (article as any).id : null
+    revalidateTag('news')
+    revalidateTag('home')
     return NextResponse.json({ ok: true, id: id != null ? Number(id) : null })
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : String(error)

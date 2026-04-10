@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 
+export const dynamic = 'force-dynamic';
+
 const BADGE_API = 'https://www.habboassets.com/api/v1/badges'
 
 export async function GET(req: Request) {

@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { getServerSession } from 'next-auth';
 import { z } from 'zod';
 import { authOptions } from '@/auth';
@@ -37,6 +38,8 @@ export async function POST(req: Request) {
   if (!result.ok) {
     return NextResponse.json({ error: result.error || 'Erreur' }, { status: 400 });
   }
+
+  revalidateTag('shop');
 
   return NextResponse.json({
     ok: true,

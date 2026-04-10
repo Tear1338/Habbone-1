@@ -4,6 +4,8 @@ import { assertAdmin } from '@/server/authz';
 import { searchAdminUsers } from '@/server/services/admin-users';
 import { checkRateLimit } from '@/server/rate-limit';
 
+export const dynamic = 'force-dynamic';
+
 const Body = z.object({
   q: z.string().optional(),
   roleId: z.string().optional(),

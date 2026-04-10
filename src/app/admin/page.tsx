@@ -1,7 +1,8 @@
 import 'server-only';
 import { getServerSession } from 'next-auth';
 import { redirect } from 'next/navigation';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
+import { TAG_NEWS, TAG_NEWS_DETAIL, TAG_FORUM, TAG_FORUM_TOPIC, TAG_STORIES, TAG_HOME } from '@/lib/revalidate-tags';
 import { authOptions } from '@/auth';
 import { assertAdmin } from '@/server/authz';
 import { adminCount, adminCountUsers } from '@/server/directus/admin';
@@ -63,9 +64,10 @@ async function requireAdmin() {
 }
 
 function revalidatePublicFeeds() {
-  revalidatePath('/');
-  revalidatePath('/news');
-  revalidatePath('/forum');
+  revalidateTag(TAG_HOME);
+  revalidateTag(TAG_NEWS);
+  revalidateTag(TAG_FORUM);
+  revalidateTag(TAG_STORIES);
 }
 
 export default async function AdminPage() {
@@ -115,6 +117,9 @@ export default async function AdminPage() {
     };
     await adminUpdateForumTopic(id, patch);
     revalidatePath('/admin');
+    revalidateTag(TAG_FORUM);
+    revalidateTag(TAG_FORUM_TOPIC(id));
+    revalidateTag(TAG_HOME);
   }
 
   async function deleteTopic(formData: FormData) {
@@ -124,8 +129,9 @@ export default async function AdminPage() {
     if (!id) return;
     await adminDeleteForumTopic(id);
     revalidatePath('/admin');
-    revalidatePublicFeeds();
-    revalidatePath(`/forum/topic/${id}`);
+    revalidateTag(TAG_FORUM);
+    revalidateTag(TAG_FORUM_TOPIC(id));
+    revalidateTag(TAG_HOME);
   }
 
   async function updatePost(formData: FormData) {
@@ -136,6 +142,7 @@ export default async function AdminPage() {
     const conteudo = String(formData.get('conteudo') || '');
     await adminUpdateForumPost(id, { conteudo });
     revalidatePath('/admin');
+    revalidateTag(TAG_FORUM);
   }
 
   async function deletePost(formData: FormData) {
@@ -145,6 +152,7 @@ export default async function AdminPage() {
     if (!id) return;
     await adminDeleteForumPost(id);
     revalidatePath('/admin');
+    revalidateTag(TAG_FORUM);
   }
 
   async function updateArticle(formData: FormData) {
@@ -160,6 +168,9 @@ export default async function AdminPage() {
     };
     await adminUpdateNews(id, patch);
     revalidatePath('/admin');
+    revalidateTag(TAG_NEWS);
+    revalidateTag(TAG_NEWS_DETAIL(id));
+    revalidateTag(TAG_HOME);
   }
 
   async function deleteArticle(formData: FormData) {
@@ -169,8 +180,9 @@ export default async function AdminPage() {
     if (!id) return;
     await adminDeleteNews(id);
     revalidatePath('/admin');
-    revalidatePublicFeeds();
-    revalidatePath(`/news/${id}`);
+    revalidateTag(TAG_NEWS);
+    revalidateTag(TAG_NEWS_DETAIL(id));
+    revalidateTag(TAG_HOME);
   }
 
   async function updateForumComment(formData: FormData) {
@@ -181,6 +193,7 @@ export default async function AdminPage() {
     const comentario = String(formData.get('comentario') || '');
     await adminUpdateForumComment(id, { comentario });
     revalidatePath('/admin');
+    revalidateTag(TAG_FORUM);
   }
 
   async function deleteForumComment(formData: FormData) {
@@ -190,6 +203,7 @@ export default async function AdminPage() {
     if (!id) return;
     await adminDeleteForumComment(id);
     revalidatePath('/admin');
+    revalidateTag(TAG_FORUM);
   }
 
   async function updateNewsComment(formData: FormData) {
@@ -200,6 +214,7 @@ export default async function AdminPage() {
     const comentario = String(formData.get('comentario') || '');
     await adminUpdateNewsComment(id, { comentario });
     revalidatePath('/admin');
+    revalidateTag(TAG_NEWS);
   }
 
   async function deleteNewsComment(formData: FormData) {
@@ -209,6 +224,7 @@ export default async function AdminPage() {
     if (!id) return;
     await adminDeleteNewsComment(id);
     revalidatePath('/admin');
+    revalidateTag(TAG_NEWS);
   }
 
   async function updateStory(formData: FormData) {
@@ -223,6 +239,8 @@ export default async function AdminPage() {
     if (formData.has('imagem')) patch.imagem = String(formData.get('imagem') || '');
     await adminUpdateStory(id, patch);
     revalidatePath('/admin');
+    revalidateTag(TAG_STORIES);
+    revalidateTag(TAG_HOME);
   }
 
   async function deleteStory(formData: FormData) {
@@ -232,6 +250,8 @@ export default async function AdminPage() {
     if (!id) return;
     await adminDeleteStory(id);
     revalidatePath('/admin');
+    revalidateTag(TAG_STORIES);
+    revalidateTag(TAG_HOME);
   }
 
   const summaryStats = [

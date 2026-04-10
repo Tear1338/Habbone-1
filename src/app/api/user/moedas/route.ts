@@ -4,6 +4,8 @@ import { authOptions } from '@/auth'
 import { getUserMoedas } from '@/server/directus/users'
 import { buildError } from '@/types/api'
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const session = await getServerSession(authOptions)

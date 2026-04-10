@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { revalidateTag } from 'next/cache';
 import { z } from "zod";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/auth";
@@ -75,6 +76,8 @@ export async function POST(
       author: String(user.nick || user.email || "Anonyme"),
       content: sanitizedHtml,
     });
+    revalidateTag('news');
+    revalidateTag('news-' + newsId);
     return NextResponse.json({ ok: true, data: created });
   } catch (error) {
     return NextResponse.json(buildError("Echec de publication", { code: "CREATE_FAILED" }), {

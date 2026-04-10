@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { revalidateTag } from 'next/cache'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/auth'
 import { sanitizeCommentBody } from '@/server/comment-sanitize'
@@ -49,6 +50,8 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
 
   try {
     const created = await createForumComment({ topicId, author: String(user.nick), content: sanitizedHtml })
+    revalidateTag('forum')
+    revalidateTag('forum-topic-' + topicId)
     return NextResponse.json({ ok: true, data: created })
   } catch {
     return NextResponse.json(buildError('Echec de publication', { code: 'CREATE_FAILED' }), { status: 500 })

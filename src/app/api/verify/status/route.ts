@@ -12,6 +12,8 @@ import { parseTimestamp } from '@/lib/date-utils'
 import * as logger from '@/server/logger'
 import { checkRateLimit } from '@/server/rate-limit'
 
+export const dynamic = 'force-dynamic';
+
 const ERROR_NOT_FOUND = buildError('Utilisateur introuvable', { code: 'NOT_FOUND' })
 
 export async function POST(req: Request) {

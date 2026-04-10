@@ -7,6 +7,8 @@ import {
   countUnreadNotifications,
 } from '@/server/directus/shop';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     await assertAdmin();
