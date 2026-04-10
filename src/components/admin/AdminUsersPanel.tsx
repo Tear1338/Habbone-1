@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   Ban,
   Check,
@@ -17,7 +17,14 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import ConfirmDialog from "@/components/admin/ConfirmDialog";
-import UserHistoryModal from "@/components/admin/UserHistoryModal";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -53,297 +60,6 @@ type ConfirmState = {
 type DropdownOption = { value: string; label: string };
 
 const LIMIT = 10;
-
-/* ------------------------------------------------------------------ */
-/*  Custom Dropdown — thème sombre, accessible                         */
-/* ------------------------------------------------------------------ */
-
-function Dropdown({
-  options,
-  value,
-  onChange,
-  placeholder,
-  className = "",
-  disabled = false,
-  align = "left",
-  width,
-}: {
-  options: DropdownOption[];
-  value: string;
-  onChange: (value: string) => void;
-  placeholder: string;
-  className?: string;
-  disabled?: boolean;
-  align?: "left" | "right";
-  width?: string;
-}) {
-  const [open, setOpen] = useState(false);
-  const [focused, setFocused] = useState(-1);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const listRef = useRef<HTMLUListElement>(null);
-
-  const selected = options.find((o) => o.value === value);
-
-  // Close on click outside
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
-
-  // Scroll focused into view
-  useEffect(() => {
-    if (!open || focused < 0 || !listRef.current) return;
-    const el = listRef.current.children[focused] as HTMLElement | undefined;
-    el?.scrollIntoView({ block: "nearest" });
-  }, [focused, open]);
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (disabled) return;
-
-    switch (e.key) {
-      case "Enter":
-      case " ":
-        e.preventDefault();
-        if (!open) {
-          setOpen(true);
-          setFocused(options.findIndex((o) => o.value === value));
-        } else if (focused >= 0 && focused < options.length) {
-          onChange(options[focused].value);
-          setOpen(false);
-        }
-        break;
-      case "Escape":
-        e.preventDefault();
-        setOpen(false);
-        break;
-      case "ArrowDown":
-        e.preventDefault();
-        if (!open) {
-          setOpen(true);
-          setFocused(0);
-        } else {
-          setFocused((prev) => Math.min(prev + 1, options.length - 1));
-        }
-        break;
-      case "ArrowUp":
-        e.preventDefault();
-        if (open) {
-          setFocused((prev) => Math.max(prev - 1, 0));
-        }
-        break;
-      case "Tab":
-        if (open) setOpen(false);
-        break;
-    }
-  };
-
-  return (
-    <div ref={containerRef} className={`relative ${className}`} style={width ? { width } : undefined}>
-      <button
-        type="button"
-        onClick={() => {
-          if (!disabled) {
-            setOpen(!open);
-            if (!open) setFocused(options.findIndex((o) => o.value === value));
-          }
-        }}
-        onKeyDown={handleKeyDown}
-        disabled={disabled}
-        className={`flex h-[42px] w-full items-center justify-between gap-2 rounded-[6px] border border-white/5 bg-[#141433]/50 px-3 text-[13px] transition-colors focus:border-[#2596FF]/40 focus:outline-none focus-visible:ring-1 focus-visible:ring-[#2596FF]/40 disabled:opacity-50 ${
-          selected ? "text-white" : "text-[#BEBECE]/50"
-        }`}
-        role="combobox"
-        aria-expanded={open}
-        aria-haspopup="listbox"
-      >
-        <span className="truncate">{selected?.label || placeholder}</span>
-        <ChevronDown className={`h-3.5 w-3.5 shrink-0 text-[#BEBECE]/40 transition-transform ${open ? "rotate-180" : ""}`} />
-      </button>
-
-      {open && (
-        <ul
-          ref={listRef}
-          role="listbox"
-          className={`absolute z-[60] mt-1 max-h-[240px] overflow-y-auto rounded-[6px] border border-white/10 bg-[#1E1E3D] py-1 shadow-xl ${
-            align === "right" ? "right-0" : "left-0"
-          }`}
-          style={{ minWidth: "100%", width: width || "100%" }}
-        >
-          {options.map((opt, i) => {
-            const isSelected = opt.value === value;
-            const isFocused = i === focused;
-            return (
-              <li
-                key={opt.value}
-                role="option"
-                aria-selected={isSelected}
-                onClick={() => {
-                  onChange(opt.value);
-                  setOpen(false);
-                }}
-                onMouseEnter={() => setFocused(i)}
-                className={`flex cursor-pointer items-center justify-between gap-2 px-3 py-2 text-[13px] transition-colors ${
-                  isFocused
-                    ? "bg-[#2596FF]/15 text-white"
-                    : isSelected
-                      ? "text-white"
-                      : "text-[#BEBECE]/70 hover:text-white"
-                }`}
-              >
-                <span className="truncate">{opt.label}</span>
-                {isSelected && <Check className="h-3.5 w-3.5 shrink-0 text-[#2596FF]" />}
-              </li>
-            );
-          })}
-          {options.length === 0 && (
-            <li className="px-3 py-2 text-[12px] text-[#BEBECE]/40">Aucune option</li>
-          )}
-        </ul>
-      )}
-    </div>
-  );
-}
-
-/* ------------------------------------------------------------------ */
-/*  Role Dropdown — inline dans les actions du tableau                  */
-/* ------------------------------------------------------------------ */
-
-function RoleDropdown({
-  options,
-  currentValue,
-  onSelect,
-  disabled = false,
-}: {
-  options: DropdownOption[];
-  currentValue: string;
-  onSelect: (value: string) => void;
-  disabled?: boolean;
-}) {
-  const [open, setOpen] = useState(false);
-  const [focused, setFocused] = useState(-1);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const listRef = useRef<HTMLUListElement>(null);
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", handler);
-    return () => document.removeEventListener("mousedown", handler);
-  }, [open]);
-
-  useEffect(() => {
-    if (!open || focused < 0 || !listRef.current) return;
-    const el = listRef.current.children[focused] as HTMLElement | undefined;
-    el?.scrollIntoView({ block: "nearest" });
-  }, [focused, open]);
-
-  const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (disabled) return;
-    switch (e.key) {
-      case "Enter":
-      case " ":
-        e.preventDefault();
-        if (!open) {
-          setOpen(true);
-          setFocused(options.findIndex((o) => o.value === currentValue));
-        } else if (focused >= 0 && focused < options.length) {
-          onSelect(options[focused].value);
-          setOpen(false);
-        }
-        break;
-      case "Escape":
-        e.preventDefault();
-        setOpen(false);
-        break;
-      case "ArrowDown":
-        e.preventDefault();
-        if (!open) { setOpen(true); setFocused(0); }
-        else setFocused((p) => Math.min(p + 1, options.length - 1));
-        break;
-      case "ArrowUp":
-        e.preventDefault();
-        if (open) setFocused((p) => Math.max(p - 1, 0));
-        break;
-      case "Tab":
-        if (open) setOpen(false);
-        break;
-    }
-  };
-
-  return (
-    <div ref={containerRef} className="relative">
-      <button
-        type="button"
-        onClick={() => {
-          if (!disabled) {
-            setOpen(!open);
-            if (!open) setFocused(options.findIndex((o) => o.value === currentValue));
-          }
-        }}
-        onKeyDown={handleKeyDown}
-        disabled={disabled}
-        className="grid h-[30px] w-[30px] place-items-center rounded-[4px] text-[#BEBECE]/50 transition-colors hover:bg-white/5 hover:text-[#2596FF] focus-visible:ring-1 focus-visible:ring-[#2596FF]/40 focus-visible:outline-none disabled:opacity-50"
-        title="Changer le rôle"
-        aria-label="Changer le rôle"
-        aria-expanded={open}
-        aria-haspopup="listbox"
-      >
-        <Pencil className="h-3.5 w-3.5" />
-      </button>
-
-      {open && (
-        <ul
-          ref={listRef}
-          role="listbox"
-          className="absolute right-0 top-[34px] z-[60] max-h-[200px] w-[180px] overflow-y-auto rounded-[6px] border border-white/10 bg-[#1E1E3D] py-1 shadow-xl"
-        >
-          <li className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-[#BEBECE]/40">
-            Changer le rôle
-          </li>
-          {options.map((opt, i) => {
-            const isSelected = opt.value === currentValue;
-            const isFocused = i === focused;
-            const badge = getRoleBadge(opt.label);
-            return (
-              <li
-                key={opt.value}
-                role="option"
-                aria-selected={isSelected}
-                onClick={() => {
-                  if (opt.value !== currentValue) {
-                    onSelect(opt.value);
-                  }
-                  setOpen(false);
-                }}
-                onMouseEnter={() => setFocused(i)}
-                className={`flex cursor-pointer items-center justify-between gap-2 px-3 py-2 text-[12px] transition-colors ${
-                  isFocused
-                    ? "bg-[#2596FF]/10 text-white"
-                    : "text-[#BEBECE]/70 hover:text-white"
-                }`}
-              >
-                <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${badge.bg} ${badge.text}`}>
-                  {opt.label}
-                </span>
-                {isSelected && <Check className="h-3 w-3 shrink-0 text-[#2596FF]" />}
-              </li>
-            );
-          })}
-        </ul>
-      )}
-    </div>
-  );
-}
 
 /* ------------------------------------------------------------------ */
 /*  Role badge colors                                                  */
@@ -536,7 +252,7 @@ export default function AdminUsersPanel({
         return;
       }
       const roleName = roles.find((r) => r.id === nextRoleId)?.name || nextRoleId;
-      toast.success(`Rôle changé en "${roleName}"`);
+      toast.success(`Rôle changé en « ${roleName} »`);
       await getUsers({ page });
     } catch {
       toast.error("Impossible de mettre à jour le rôle");
@@ -663,7 +379,7 @@ export default function AdminUsersPanel({
       case "role":
         return {
           title: "Changer le rôle ?",
-          description: `Le rôle de ${name} sera changé en "${confirmState.roleName || "nouveau rôle"}". Les permissions seront mises à jour immédiatement.`,
+          description: `Le rôle de ${name} sera changé en « ${confirmState.roleName || "nouveau rôle"} ». Les permissions seront mises à jour immédiatement.`,
           confirmLabel: "Changer le rôle",
           variant: "warning" as const,
           icon: <Shield className="h-5 w-5" />,
@@ -693,7 +409,7 @@ export default function AdminUsersPanel({
       {/* ── Search + Filters ── */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#BEBECE]/40" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#BEBECE]/50" />
           <input
             type="text"
             placeholder="Rechercher par pseudo ou email..."
@@ -706,12 +422,12 @@ export default function AdminUsersPanel({
               }
             }}
             aria-label="Rechercher un utilisateur"
-            className="h-[42px] w-full rounded-[6px] border border-white/5 bg-[#141433]/50 pl-10 pr-4 text-[13px] text-white placeholder:text-[#BEBECE]/30 focus:border-[#2596FF]/40 focus:outline-none focus-visible:ring-1 focus-visible:ring-[#2596FF]/40"
+            className="h-[42px] w-full rounded-[6px] border border-white/10 bg-[#141433]/60 pl-10 pr-4 text-[13px] text-white placeholder:text-[#BEBECE]/40 focus:border-[#2596FF]/50 focus:outline-none focus-visible:ring-1 focus-visible:ring-[#2596FF]/40"
           />
         </div>
 
-        {/* Role filter — custom dropdown */}
-        <Dropdown
+        {/* Role filter — shadcn DropdownMenu */}
+        <FilterDropdown
           options={roleFilterOptions}
           value={roleId}
           onChange={(v) => {
@@ -722,8 +438,8 @@ export default function AdminUsersPanel({
           className="sm:w-[180px]"
         />
 
-        {/* Status filter — custom dropdown */}
-        <Dropdown
+        {/* Status filter — shadcn DropdownMenu */}
+        <FilterDropdown
           options={statusFilterOptions}
           value={statusFilter}
           onChange={(v) => {
@@ -734,42 +450,42 @@ export default function AdminUsersPanel({
           className="sm:w-[180px]"
         />
 
-        <span className="shrink-0 text-[12px] text-[#BEBECE]/40">
+        <span className="shrink-0 text-[12px] text-[#BEBECE]/50">
           {total} utilisateur{total !== 1 ? "s" : ""}
         </span>
       </div>
 
       {/* ── Table ── */}
       {loading && items.length === 0 ? (
-        <div className="py-12 text-center text-[13px] text-[#BEBECE]/40">Chargement...</div>
+        <div className="py-12 text-center text-[13px] text-[#BEBECE]/50">Chargement...</div>
       ) : items.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-3 rounded-[8px] border border-dashed border-white/10 bg-[#141433]/30 p-12 text-center">
-          <div className="grid h-12 w-12 place-items-center rounded-full bg-white/5 text-[#BEBECE]/30">
+          <div className="grid h-12 w-12 place-items-center rounded-full bg-white/5 text-[#BEBECE]/40">
             <Users className="h-6 w-6" />
           </div>
           <p className="text-[14px] font-semibold text-white">Aucun utilisateur trouvé</p>
-          <p className="max-w-sm text-[12px] text-[#BEBECE]/40">
+          <p className="max-w-sm text-[12px] text-[#BEBECE]/50">
             Essaie une recherche plus large ou retire les filtres.
           </p>
         </div>
       ) : (
         <div className="overflow-x-auto rounded-[8px] border border-white/5">
-          <table className="w-full min-w-[700px] text-left">
+          <table className="w-full min-w-[750px] text-left">
             <thead>
-              <tr className="border-b border-white/5 bg-[#141433]/50">
-                <th scope="col" className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-[#BEBECE]/50">
+              <tr className="border-b border-white/5 bg-[#141433]/60">
+                <th scope="col" className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-[#BEBECE]/60">
                   Utilisateur
                 </th>
-                <th scope="col" className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-[#BEBECE]/50">
+                <th scope="col" className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-[#BEBECE]/60">
                   Email
                 </th>
-                <th scope="col" className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-[#BEBECE]/50">
+                <th scope="col" className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-[#BEBECE]/60">
                   Rôle
                 </th>
-                <th scope="col" className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-[#BEBECE]/50">
+                <th scope="col" className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-[#BEBECE]/60">
                   Statut
                 </th>
-                <th scope="col" className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-[#BEBECE]/50">
+                <th scope="col" className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-[#BEBECE]/60">
                   Actions
                 </th>
               </tr>
@@ -791,7 +507,7 @@ export default function AdminUsersPanel({
                 return (
                   <tr
                     key={user.id}
-                    className="border-b border-white/[0.03] transition-colors hover:bg-white/[0.02]"
+                    className="border-b border-white/[0.04] transition-colors hover:bg-white/[0.02]"
                   >
                     {/* User */}
                     <td className="px-4 py-3">
@@ -806,7 +522,7 @@ export default function AdminUsersPanel({
                     </td>
 
                     {/* Email */}
-                    <td className="px-4 py-3 text-[13px] text-[#BEBECE]/60">
+                    <td className="px-4 py-3 text-[13px] text-[#BEBECE]/70">
                       {user.email || "—"}
                     </td>
 
@@ -830,31 +546,78 @@ export default function AdminUsersPanel({
                       )}
                     </td>
 
-                    {/* Actions — custom dropdowns thème sombre */}
+                    {/* Actions — shadcn DropdownMenu (Portal-based, no clipping) */}
                     <td className="px-4 py-3">
-                      <div className="flex items-center justify-end gap-1">
-                        {/* Edit role — custom dropdown */}
-                        <RoleDropdown
-                          options={roleActionOptions}
-                          currentValue={selectedRole}
-                          onSelect={(v) => handleRoleChange(user, v)}
-                          disabled={savingId === user.id}
-                        />
+                      <div className="flex items-center justify-end gap-1.5">
+                        {/* Edit role — shadcn DropdownMenu */}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <button
+                              type="button"
+                              disabled={savingId === user.id}
+                              className="grid h-[36px] w-[36px] place-items-center rounded-[6px] text-[#BEBECE]/60 transition-colors hover:bg-[#2596FF]/10 hover:text-[#2596FF] focus-visible:ring-1 focus-visible:ring-[#2596FF]/40 focus-visible:outline-none disabled:opacity-50"
+                              title="Changer le rôle"
+                              aria-label={`Changer le rôle de ${formatFullName(user)}`}
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent
+                            align="end"
+                            className="w-[200px] border-white/10 bg-[#1E1E3D] text-white"
+                          >
+                            <DropdownMenuLabel className="text-[10px] font-bold uppercase tracking-wider text-[#BEBECE]/50">
+                              Changer le rôle
+                            </DropdownMenuLabel>
+                            <DropdownMenuSeparator className="bg-white/5" />
+                            {roleActionOptions.map((opt) => {
+                              const isSelected = opt.value === selectedRole;
+                              const badge = getRoleBadge(opt.label);
+                              return (
+                                <DropdownMenuItem
+                                  key={opt.value}
+                                  onClick={() => {
+                                    if (opt.value !== selectedRole) {
+                                      handleRoleChange(user, opt.value);
+                                    }
+                                  }}
+                                  className="flex cursor-pointer items-center justify-between gap-2 text-[12px] text-[#BEBECE]/80 transition-colors focus:bg-[#2596FF]/10 focus:text-white"
+                                >
+                                  <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold uppercase ${badge.bg} ${badge.text}`}>
+                                    {opt.label}
+                                  </span>
+                                  {isSelected && <Check className="h-3 w-3 shrink-0 text-[#2596FF]" />}
+                                </DropdownMenuItem>
+                              );
+                            })}
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+
+                        {/* Send coins */}
+                        <button
+                          type="button"
+                          onClick={() => setCoinsModal({ userId: user.id, userName: formatFullName(user) })}
+                          className="grid h-[36px] w-[36px] place-items-center rounded-[6px] text-[#BEBECE]/60 transition-colors hover:bg-[#FFC800]/10 hover:text-[#FFC800] focus-visible:ring-1 focus-visible:ring-[#FFC800]/40 focus-visible:outline-none"
+                          title="Envoyer des coins"
+                          aria-label={`Envoyer des coins à ${formatFullName(user)}`}
+                        >
+                          <Coins className="h-4 w-4" />
+                        </button>
 
                         {/* Ban / Unban */}
                         <button
                           type="button"
                           onClick={() => setConfirmState({ type: isSuspended ? "unban" : "ban", user })}
                           disabled={banLoadingId === user.id}
-                          className={`grid h-[30px] w-[30px] place-items-center rounded-[4px] transition-colors hover:bg-white/5 focus-visible:ring-1 focus-visible:ring-[#2596FF]/40 focus-visible:outline-none ${
+                          className={`grid h-[36px] w-[36px] place-items-center rounded-[6px] transition-colors focus-visible:ring-1 focus-visible:ring-[#2596FF]/40 focus-visible:outline-none ${
                             isSuspended
-                              ? "text-[#0FD52F]/60 hover:text-[#0FD52F]"
-                              : "text-[#BEBECE]/50 hover:text-[#FFC800]"
+                              ? "text-[#0FD52F]/70 hover:bg-[#0FD52F]/10 hover:text-[#0FD52F]"
+                              : "text-[#BEBECE]/60 hover:bg-[#FFC800]/10 hover:text-[#FFC800]"
                           }`}
                           title={isSuspended ? "Réactiver" : "Bannir"}
                           aria-label={isSuspended ? `Réactiver ${formatFullName(user)}` : `Bannir ${formatFullName(user)}`}
                         >
-                          <Ban className="h-3.5 w-3.5" />
+                          <Ban className="h-4 w-4" />
                         </button>
 
                         {/* Delete */}
@@ -862,11 +625,11 @@ export default function AdminUsersPanel({
                           type="button"
                           onClick={() => setConfirmState({ type: "delete", user })}
                           disabled={deleteLoadingId === user.id}
-                          className="grid h-[30px] w-[30px] place-items-center rounded-[4px] text-[#BEBECE]/50 transition-colors hover:bg-red-500/10 hover:text-[#F92330] focus-visible:ring-1 focus-visible:ring-[#F92330]/40 focus-visible:outline-none"
+                          className="grid h-[36px] w-[36px] place-items-center rounded-[6px] text-[#BEBECE]/60 transition-colors hover:bg-[#F92330]/10 hover:text-[#F92330] focus-visible:ring-1 focus-visible:ring-[#F92330]/40 focus-visible:outline-none"
                           title="Supprimer"
                           aria-label={`Supprimer ${formatFullName(user)}`}
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
+                          <Trash2 className="h-4 w-4" />
                         </button>
                       </div>
                     </td>
@@ -881,7 +644,7 @@ export default function AdminUsersPanel({
       {/* ── Pagination ── */}
       {items.length > 0 && (
         <div className="flex items-center justify-between">
-          <span className="text-[12px] text-[#BEBECE]/40">
+          <span className="text-[12px] text-[#BEBECE]/50">
             Affichage de {items.length} sur {total} utilisateur{total !== 1 ? "s" : ""}
           </span>
           <nav className="flex items-center gap-1" aria-label="Pagination">
@@ -889,7 +652,7 @@ export default function AdminUsersPanel({
               type="button"
               disabled={page <= 1 || loading}
               onClick={() => void getUsers({ page: Math.max(1, page - 1) })}
-              className="grid h-[32px] w-[32px] place-items-center rounded-[4px] text-[#BEBECE]/50 transition-colors hover:bg-white/5 hover:text-white disabled:opacity-30"
+              className="grid h-[32px] w-[32px] place-items-center rounded-[4px] text-[#BEBECE]/60 transition-colors hover:bg-white/5 hover:text-white disabled:opacity-30"
               aria-label="Page précédente"
             >
               <ChevronLeft className="h-4 w-4" />
@@ -915,7 +678,7 @@ export default function AdminUsersPanel({
                   className={`grid h-[32px] w-[32px] place-items-center rounded-[4px] text-[12px] font-bold transition-colors ${
                     pageNum === page
                       ? "bg-[#2596FF] text-white"
-                      : "text-[#BEBECE]/50 hover:bg-white/5 hover:text-white"
+                      : "text-[#BEBECE]/60 hover:bg-white/5 hover:text-white"
                   }`}
                   aria-label={`Page ${pageNum}`}
                   aria-current={pageNum === page ? "page" : undefined}
@@ -929,7 +692,7 @@ export default function AdminUsersPanel({
               type="button"
               disabled={loading || items.length === 0 || items.length < LIMIT}
               onClick={() => void getUsers({ page: page + 1 })}
-              className="grid h-[32px] w-[32px] place-items-center rounded-[4px] text-[#BEBECE]/50 transition-colors hover:bg-white/5 hover:text-white disabled:opacity-30"
+              className="grid h-[32px] w-[32px] place-items-center rounded-[4px] text-[#BEBECE]/60 transition-colors hover:bg-white/5 hover:text-white disabled:opacity-30"
               aria-label="Page suivante"
             >
               <ChevronRight className="h-4 w-4" />
@@ -948,19 +711,19 @@ export default function AdminUsersPanel({
           aria-label="Envoyer des HabbOneCoins"
         >
           <div
-            className="w-full max-w-[400px] rounded-[8px] border border-white/5 bg-[#1E1E3D] p-6 shadow-2xl"
+            className="w-full max-w-[400px] rounded-[8px] border border-white/10 bg-[#1E1E3D] p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => {
               if (e.key === "Escape") setCoinsModal(null);
             }}
           >
             <h3 className="text-[16px] font-bold text-white">Envoyer des HabbOneCoins</h3>
-            <p className="mt-1 text-[13px] text-[#BEBECE]/60">
+            <p className="mt-1 text-[13px] text-[#BEBECE]/70">
               Destinataire : <span className="font-bold text-[#2596FF]">{coinsModal.userName}</span>
             </p>
 
             <div className="mt-4">
-              <label htmlFor="coins-amount" className="mb-1 block text-[11px] font-bold uppercase text-[#BEBECE]/50">
+              <label htmlFor="coins-amount" className="mb-1 block text-[11px] font-bold uppercase text-[#BEBECE]/60">
                 Montant
               </label>
               <input
@@ -976,7 +739,7 @@ export default function AdminUsersPanel({
                   if (e.key === "Enter") handleSendCoins();
                   if (e.key === "Escape") setCoinsModal(null);
                 }}
-                className="w-full rounded-[6px] border border-white/5 bg-[#141433]/50 px-3 py-2.5 text-[14px] text-white placeholder:text-[#BEBECE]/30 focus:border-[#FFC800]/40 focus:outline-none focus-visible:ring-1 focus-visible:ring-[#FFC800]/40"
+                className="w-full rounded-[6px] border border-white/10 bg-[#141433]/60 px-3 py-2.5 text-[14px] text-white placeholder:text-[#BEBECE]/40 focus:border-[#FFC800]/50 focus:outline-none focus-visible:ring-1 focus-visible:ring-[#FFC800]/40"
               />
             </div>
 
@@ -997,7 +760,7 @@ export default function AdminUsersPanel({
               <button
                 type="button"
                 onClick={() => setCoinsModal(null)}
-                className="h-[36px] rounded-[6px] border border-white/5 bg-[#141433]/50 px-4 text-[13px] font-bold text-white transition-colors hover:bg-white/5"
+                className="h-[36px] rounded-[6px] border border-white/10 bg-[#141433]/60 px-4 text-[13px] font-bold text-white transition-colors hover:bg-white/5"
               >
                 Annuler
               </button>
@@ -1038,6 +801,62 @@ export default function AdminUsersPanel({
 }
 
 /* ------------------------------------------------------------------ */
+/*  FilterDropdown — shadcn DropdownMenu for filters (Portal-based)    */
+/* ------------------------------------------------------------------ */
+
+function FilterDropdown({
+  options,
+  value,
+  onChange,
+  placeholder,
+  className = "",
+}: {
+  options: DropdownOption[];
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  className?: string;
+}) {
+  const selected = options.find((o) => o.value === value);
+
+  return (
+    <div className={className}>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <button
+            type="button"
+            className={`flex h-[42px] w-full items-center justify-between gap-2 rounded-[6px] border border-white/10 bg-[#141433]/60 px-3 text-[13px] transition-colors focus:border-[#2596FF]/50 focus:outline-none focus-visible:ring-1 focus-visible:ring-[#2596FF]/40 ${
+              selected && selected.value ? "text-white" : "text-[#BEBECE]/60"
+            }`}
+          >
+            <span className="truncate">{selected?.label || placeholder}</span>
+            <ChevronDown className="h-3.5 w-3.5 shrink-0 text-[#BEBECE]/50" />
+          </button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent
+          align="start"
+          className="min-w-[180px] border-white/10 bg-[#1E1E3D] text-white"
+        >
+          {options.map((opt) => {
+            const isSelected = opt.value === value;
+            return (
+              <DropdownMenuItem
+                key={opt.value}
+                onClick={() => onChange(opt.value)}
+                className="flex cursor-pointer items-center justify-between gap-2 text-[13px] text-[#BEBECE]/80 transition-colors focus:bg-[#2596FF]/10 focus:text-white"
+              >
+                <span className="truncate">{opt.label}</span>
+                {isSelected && <Check className="h-3.5 w-3.5 shrink-0 text-[#2596FF]" />}
+              </DropdownMenuItem>
+            );
+          })}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
 /*  Sub-components                                                     */
 /* ------------------------------------------------------------------ */
 
@@ -1047,7 +866,7 @@ function MiniStatCard({ value, label, color }: { value: number; label: string; c
       <div className={`grid h-8 w-8 shrink-0 place-items-center rounded-[6px] ${color} text-[13px] font-bold text-white`}>
         {value}
       </div>
-      <span className="text-[13px] text-[#BEBECE]/60">{label}</span>
+      <span className="text-[13px] text-[#BEBECE]/70">{label}</span>
     </div>
   );
 }

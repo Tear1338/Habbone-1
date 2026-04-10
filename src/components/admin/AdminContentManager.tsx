@@ -577,14 +577,14 @@ function ViewContent({
     metaCards.push({ label: "Article", value: `#${(item as AdminNewsComment).id_noticia}` });
   }
   if (contentType === "articles" && (item as AdminArticle).descricao) {
-    metaCards.push({ label: "Resume", value: (item as AdminArticle).descricao || "" });
+    metaCards.push({ label: "Résumé", value: (item as AdminArticle).descricao || "" });
   }
   if (contentType === "stories") {
     metaCards.push({ label: "Statut", value: (item as AdminStory).status || "public" });
   }
   if (contentType === "topics") {
-    metaCards.push({ label: "Epingle", value: (item as AdminTopic).fixo ? "Oui" : "Non" });
-    metaCards.push({ label: "Ferme", value: (item as AdminTopic).fechado ? "Oui" : "Non" });
+    metaCards.push({ label: "Épinglé", value: (item as AdminTopic).fixo ? "Oui" : "Non" });
+    metaCards.push({ label: "Fermé", value: (item as AdminTopic).fechado ? "Oui" : "Non" });
   }
 
   return (
@@ -665,7 +665,7 @@ function EditForm({
             )}
 
             {contentType === "articles" && (
-              <Field label="Resume">
+              <Field label="Résumé">
                 <Input
                   value={(formState.descricao as string) || ""}
                   onChange={(event) => updateField("descricao", event.target.value)}
@@ -694,11 +694,11 @@ function EditForm({
             <div className="mt-4 flex flex-wrap gap-6">
               <label className="flex items-center gap-2 text-sm text-[color:var(--foreground)]/75">
                 <Checkbox checked={!!formState.fixo} onCheckedChange={(value) => updateField("fixo", !!value)} />
-                Epingle
+                Épinglé
               </label>
               <label className="flex items-center gap-2 text-sm text-[color:var(--foreground)]/75">
                 <Checkbox checked={!!formState.fechado} onCheckedChange={(value) => updateField("fechado", !!value)} />
-                Ferme
+                Fermé
               </label>
             </div>
           )}
@@ -868,10 +868,10 @@ function StatusBadges({ item, contentType }: { item: ContentItem; contentType: C
     return (
       <div className="mt-1 flex flex-wrap items-center gap-1">
         {(item as AdminTopic).fixo && (
-          <Badge className="border-0 bg-[#FFC800]/15 text-[10px] text-[#FFC800]">Epingle</Badge>
+          <Badge className="border-0 bg-[#FFC800]/15 text-[10px] text-[#FFC800]">Épinglé</Badge>
         )}
         {(item as AdminTopic).fechado && (
-          <Badge className="border-0 bg-[#25254D] text-[10px] text-[color:var(--foreground)]/60">Ferme</Badge>
+          <Badge className="border-0 bg-[#25254D] text-[10px] text-[color:var(--foreground)]/60">Fermé</Badge>
         )}
       </div>
     );

@@ -96,13 +96,13 @@ export default function AdminDashboard(props: AdminDashboardProps) {
                 Bienvenue sur le panneau d&apos;administration HabbOne
               </p>
             </div>
-            <div className="flex items-center gap-2 text-[12px] text-[#BEBECE]/40">
+            <div className="flex items-center gap-2 text-[12px] text-[#BEBECE]/50">
               <Clock className="h-3.5 w-3.5" />
               Dernière mise à jour : maintenant
             </div>
           </div>
 
-          {/* Stats grid — 4 cards */}
+          {/* Stats grid — 4 clickable cards */}
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <StatCard
               label="Utilisateurs inscrits"
@@ -110,6 +110,7 @@ export default function AdminDashboard(props: AdminDashboardProps) {
               icon={<Users className="h-5 w-5" />}
               iconBg="bg-[#2596FF]/15"
               iconColor="text-[#2596FF]"
+              onClick={() => setView('users')}
             />
             <StatCard
               label="Actualités publiées"
@@ -117,6 +118,7 @@ export default function AdminDashboard(props: AdminDashboardProps) {
               icon={<Newspaper className="h-5 w-5" />}
               iconBg="bg-[#0FD52F]/15"
               iconColor="text-[#0FD52F]"
+              onClick={() => setView('content')}
             />
             <StatCard
               label="Sujets sur le forum"
@@ -124,6 +126,7 @@ export default function AdminDashboard(props: AdminDashboardProps) {
               icon={<MessageSquare className="h-5 w-5" />}
               iconBg="bg-[#FFC800]/15"
               iconColor="text-[#FFC800]"
+              onClick={() => setView('content')}
             />
             <StatCard
               label="Commentaires"
@@ -131,6 +134,7 @@ export default function AdminDashboard(props: AdminDashboardProps) {
               icon={<FileText className="h-5 w-5" />}
               iconBg="bg-[#FF4B6C]/15"
               iconColor="text-[#FF4B6C]"
+              onClick={() => setView('content')}
             />
           </div>
 
@@ -139,7 +143,7 @@ export default function AdminDashboard(props: AdminDashboardProps) {
             <div className="mb-4 flex items-center justify-between">
               <h3 className="text-[15px] font-bold text-white">Activité récente</h3>
               {(props.recentActivity?.length ?? 0) > 0 && (
-                <span className="text-[12px] text-[#BEBECE]/40">
+                <span className="text-[12px] text-[#BEBECE]/50">
                   {props.recentActivity?.length} événement{(props.recentActivity?.length ?? 0) > 1 ? 's' : ''}
                 </span>
               )}
@@ -148,7 +152,7 @@ export default function AdminDashboard(props: AdminDashboardProps) {
             {(!props.recentActivity || props.recentActivity.length === 0) ? (
               <div className="py-8 text-center">
                 <Clock className="mx-auto mb-2 h-8 w-8 text-[#BEBECE]/20" />
-                <p className="text-[13px] text-[#BEBECE]/40">Aucune activité récente</p>
+                <p className="text-[13px] text-[#BEBECE]/50">Aucune activité récente</p>
               </div>
             ) : (
               <div className="space-y-0">
@@ -282,23 +286,29 @@ function StatCard({
   icon,
   iconBg,
   iconColor,
+  onClick,
 }: {
   label: string;
   value: string;
   icon: ReactNode;
   iconBg: string;
   iconColor: string;
+  onClick?: () => void;
 }) {
   return (
-    <div className="rounded-[8px] border border-white/5 bg-[#141433]/50 p-5">
+    <button
+      type="button"
+      onClick={onClick}
+      className="rounded-[8px] border border-white/5 bg-[#141433]/50 p-5 text-left transition-colors hover:border-[#2596FF]/20 hover:bg-[#141433]/70 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-[#2596FF]/40"
+    >
       <div className="flex items-start justify-between">
         <div className={`grid h-10 w-10 place-items-center rounded-[8px] ${iconBg} ${iconColor}`}>
           {icon}
         </div>
       </div>
       <p className="mt-4 text-[28px] font-bold leading-none text-white">{value}</p>
-      <p className="mt-1.5 text-[12px] font-medium text-[#BEBECE]/60">{label}</p>
-    </div>
+      <p className="mt-1.5 text-[12px] font-medium text-[#BEBECE]/70">{label}</p>
+    </button>
   );
 }
 
@@ -398,7 +408,7 @@ function ActivityRow({ item }: { item: RecentActivityItem }) {
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-[13px] font-medium text-white">{item.title}</p>
-        <p className="text-[11px] text-[#BEBECE]/40">{item.date}</p>
+        <p className="text-[11px] text-[#BEBECE]/50">{item.date}</p>
       </div>
       <span className={`shrink-0 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase ${config.color}`}>
         {config.label}
