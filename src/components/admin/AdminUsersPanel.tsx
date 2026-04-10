@@ -7,26 +7,17 @@ import {
   ChevronRight,
   Coins,
   History,
-  MoreHorizontal,
+  Pencil,
   RotateCcw,
   Search,
   Shield,
   Trash2,
+  UserPlus,
   Users,
 } from "lucide-react";
 import { toast } from "sonner";
 import ConfirmDialog from "@/components/admin/ConfirmDialog";
 import UserHistoryModal from "@/components/admin/UserHistoryModal";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -62,6 +53,19 @@ type ConfirmState = {
 const LIMIT = 10;
 
 /* ------------------------------------------------------------------ */
+/*  Role badge colors                                                  */
+/* ------------------------------------------------------------------ */
+
+function getRoleBadge(roleName: string): { bg: string; text: string } {
+  const n = roleName.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  if (n.includes("fondateur") || n.includes("founder")) return { bg: "bg-[#FFC800]/20", text: "text-[#FFC800]" };
+  if (n.includes("admin")) return { bg: "bg-[#F92330]/20", text: "text-[#F92330]" };
+  if (n.includes("editeur") || n.includes("editor")) return { bg: "bg-[#2596FF]/20", text: "text-[#2596FF]" };
+  if (n.includes("moderateur") || n.includes("moderator")) return { bg: "bg-[#9B59B6]/20", text: "text-[#9B59B6]" };
+  return { bg: "bg-white/10", text: "text-[#BEBECE]" };
+}
+
+/* ------------------------------------------------------------------ */
 /*  Component                                                          */
 /* ------------------------------------------------------------------ */
 
@@ -72,8 +76,7 @@ export default function AdminUsersPanel({
 }) {
   const [roles, setRoles] = useState<Role[]>([]);
   const [rolesVirtual, setRolesVirtual] = useState(false);
-  const [usersSource, setUsersSource] =
-    useState<AdminStatusPayload["usersSource"]>("unknown");
+  const [usersSource, setUsersSource] = useState<AdminStatusPayload["usersSource"]>("unknown");
   const [usersFallback, setUsersFallback] = useState(false);
   const [items, setItems] = useState<User[]>([]);
   const [total, setTotal] = useState(0);
@@ -82,21 +85,16 @@ export default function AdminUsersPanel({
   const [banLoadingId, setBanLoadingId] = useState<string | null>(null);
   const [deleteLoadingId, setDeleteLoadingId] = useState<string | null>(null);
   const [selectedRoles, setSelectedRoles] = useState<Record<string, string>>({});
-  const [coinsModal, setCoinsModal] = useState<{
-    userId: string;
-    userName: string;
-  } | null>(null);
+  const [coinsModal, setCoinsModal] = useState<{ userId: string; userName: string } | null>(null);
   const [coinsAmount, setCoinsAmount] = useState("");
   const [coinsSending, setCoinsSending] = useState(false);
   const [q, setQ] = useState("");
   const [roleId, setRoleId] = useState<string | undefined>(undefined);
+  const [statusFilter, setStatusFilter] = useState<string | undefined>(undefined);
   const [page, setPage] = useState(1);
 
   // Confirm dialog state
   const [confirmState, setConfirmState] = useState<ConfirmState>(null);
-
-  // Action menu open state (user id)
-  const [menuOpen, setMenuOpen] = useState<string | null>(null);
 
   /* ── Fetch roles ── */
   useEffect(() => {
@@ -116,21 +114,34 @@ export default function AdminUsersPanel({
     onStatusChange?.({ rolesVirtual, usersFallback, usersSource });
   }, [rolesVirtual, usersFallback, usersSource, onStatusChange]);
 
-  const roleOptions = useMemo(
-    () => roles.map((r) => ({ value: r.id, label: r.name })),
-    [roles],
-  );
+  const roleOptions = useMemo(() => roles.map((r) => ({ value: r.id, label: r.name })), [roles]);
   const pageCount = Math.max(1, Math.ceil(total / LIMIT));
+
+  /* ── Computed stats ── */
+  const statsFromItems = useMemo(() => {
+    let actifs = 0;
+    let bannis = 0;
+    let inactifs = 0;
+    for (const u of items) {
+      const s = String(u.status || "").toLowerCase();
+      if (s === "suspended") bannis++;
+      else if (s === "inactive" || s === "draft") inactifs++;
+      else actifs++;
+    }
+    return { actifs, bannis, inactifs };
+  }, [items]);
 
   /* ── Fetch users ── */
   const getUsers = async ({
     page: targetPage = page,
     query = q,
     role = roleId,
+    status = statusFilter,
   }: {
     page?: number;
     query?: string;
     role?: string;
+    status?: string;
   } = {}) => {
     setLoading(true);
     try {
@@ -141,6 +152,7 @@ export default function AdminUsersPanel({
         body: JSON.stringify({
           q: query || undefined,
           roleId: role || undefined,
+          status: status || undefined,
           page: targetPage,
           limit: LIMIT,
         }),
@@ -150,10 +162,7 @@ export default function AdminUsersPanel({
 
       const rows: User[] = Array.isArray(json?.data) ? json.data : [];
       const metaSource = json?.meta?.source;
-      const resolvedSource =
-        metaSource === "legacy" || metaSource === "directus"
-          ? metaSource
-          : "unknown";
+      const resolvedSource = metaSource === "legacy" || metaSource === "directus" ? metaSource : "unknown";
 
       setUsersSource(resolvedSource);
       setUsersFallback(Boolean(json?.meta?.fallback));
@@ -162,29 +171,12 @@ export default function AdminUsersPanel({
 
       const decorated = rows
         .map((user) => {
-          const roleObj =
-            typeof user.role === "object" && user.role
-              ? (user.role as Role)
-              : null;
-          const rawName =
-            (user as { _roleName?: string | null })._roleName ||
-            roleObj?.name ||
-            "";
-          const normalized = String(rawName)
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .toLowerCase();
-          const isFounder =
-            normalized.includes("fondateur") || normalized.includes("founder");
-          const isAdmin =
-            isFounder ||
-            normalized.includes("admin") ||
-            roleObj?.admin_access === true;
-          return {
-            ...user,
-            _roleName: rawName || null,
-            _flags: { isFounder, isAdmin },
-          } as User;
+          const roleObj = typeof user.role === "object" && user.role ? (user.role as Role) : null;
+          const rawName = (user as { _roleName?: string | null })._roleName || roleObj?.name || "";
+          const normalized = String(rawName).normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+          const isFounder = normalized.includes("fondateur") || normalized.includes("founder");
+          const isAdmin = isFounder || normalized.includes("admin") || roleObj?.admin_access === true;
+          return { ...user, _roleName: rawName || null, _flags: { isFounder, isAdmin } } as User;
         })
         .sort((a, b) => {
           const wA = a._flags?.isFounder ? 0 : a._flags?.isAdmin ? 1 : 2;
@@ -196,10 +188,7 @@ export default function AdminUsersPanel({
 
       const nextRoles: Record<string, string> = {};
       for (const user of rows) {
-        const rv =
-          typeof user.role === "object"
-            ? (user.role as { id?: string })?.id
-            : user.role;
+        const rv = typeof user.role === "object" ? (user.role as { id?: string })?.id : user.role;
         if (rv) nextRoles[user.id] = String(rv);
       }
       setSelectedRoles(nextRoles);
@@ -259,11 +248,7 @@ export default function AdminUsersPanel({
         toast.error(json?.error || "Impossible de mettre à jour le statut");
         return;
       }
-      toast.success(
-        ban
-          ? `${formatFullName(user)} a été banni`
-          : `${formatFullName(user)} a été réactivé`,
-      );
+      toast.success(ban ? `${formatFullName(user)} a été banni` : `${formatFullName(user)} a été réactivé`);
       await getUsers();
     } catch {
       toast.error("Impossible de mettre à jour le statut");
@@ -311,9 +296,7 @@ export default function AdminUsersPanel({
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error || "Échec");
-      toast.success(
-        `${amount} HabbOneCoins envoyés à ${json?.nick || coinsModal.userName} (solde : ${json?.newBalance})`,
-      );
+      toast.success(`${amount} HabbOneCoins envoyés à ${json?.nick || coinsModal.userName} (solde : ${json?.newBalance})`);
       setCoinsModal(null);
       setCoinsAmount("");
     } catch (e: any) {
@@ -336,13 +319,6 @@ export default function AdminUsersPanel({
   };
 
   const handleSearch = () => void getUsers({ page: 1 });
-
-  const handleReset = () => {
-    setQ("");
-    setRoleId(undefined);
-    setPage(1);
-    void getUsers({ page: 1, query: "", role: undefined });
-  };
 
   /* ── Confirm dialog content ── */
   const confirmDialogProps = useMemo(() => {
@@ -368,7 +344,7 @@ export default function AdminUsersPanel({
       case "delete":
         return {
           title: "Supprimer définitivement ?",
-          description: `${name} sera supprimé de façon irréversible. Ses contenus (articles, topics, commentaires) resteront mais ne seront plus liés à son compte.`,
+          description: `${name} sera supprimé de façon irréversible. Ses contenus resteront mais ne seront plus liés à son compte.`,
           confirmLabel: "Supprimer",
           variant: "danger" as const,
           icon: <Trash2 className="h-5 w-5" />,
@@ -386,331 +362,272 @@ export default function AdminUsersPanel({
     }
   }, [confirmState]);
 
+  /* ── Role change handler for select ── */
+  const handleRoleChange = (user: User, newRoleId: string) => {
+    setSelectedRoles((c) => ({ ...c, [user.id]: newRoleId }));
+    const roleName = roles.find((r) => r.id === newRoleId)?.name || newRoleId;
+    setConfirmState({ type: "role", user, roleId: newRoleId, roleName });
+  };
+
   return (
-    <div className="space-y-4">
-      {/* ── Search bar ── */}
-      <div className="rounded-[6px] border border-[#141433] bg-[#272746] p-4">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end">
-          <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#BEBECE]" />
-            <Input
-              placeholder="Nom, email, pseudo..."
-              value={q}
-              onChange={(e) => setQ(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") {
-                  e.preventDefault();
-                  handleSearch();
-                }
-              }}
-              className="h-[45px] rounded-[4px] border-[#141433] bg-[#25254D] pl-10 text-white placeholder:text-[#BEBECE]/40"
-            />
-          </div>
-
-          <Select
-            value={roleId ?? "__ALL__"}
-            onValueChange={(v) => {
-              const next = v === "__ALL__" ? undefined : v;
-              setRoleId(next);
-              void getUsers({ page: 1, role: next });
-            }}
-          >
-            <SelectTrigger className="h-[45px] w-full rounded-[4px] border-[#141433] bg-[#25254D] text-white sm:w-[200px]">
-              <SelectValue placeholder="Tous les rôles" />
-            </SelectTrigger>
-            <SelectContent className="border-[#141433] bg-[#25254D] text-white">
-              <SelectItem value="__ALL__">Tous les rôles</SelectItem>
-              {roleOptions.map((o) => (
-                <SelectItem key={o.value} value={String(o.value)}>
-                  {o.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          <div className="flex gap-2">
-            <Button
-              type="button"
-              onClick={handleSearch}
-              disabled={loading}
-              className="h-[45px] rounded-[4px] bg-[#2596FF] px-5 text-xs font-bold uppercase tracking-wider text-white hover:bg-[#2976E8]"
-            >
-              {loading ? "..." : "Rechercher"}
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={handleReset}
-              disabled={loading}
-              className="h-[45px] rounded-[4px] border-[#141433] bg-[#25254D] px-4 text-white hover:bg-[#303060]"
-            >
-              Vider
-            </Button>
-          </div>
-        </div>
-
-        <div className="mt-3 flex flex-wrap gap-2 text-xs text-[#BEBECE]">
-          <span>{total} utilisateur(s)</span>
-          <span>·</span>
-          <span>
-            page {page}/{pageCount}
-          </span>
-        </div>
+    <div className="space-y-5">
+      {/* ── Mini stat cards ── */}
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <MiniStatCard value={total} label="Total des membres" color="bg-[#2596FF]" />
+        <MiniStatCard value={statsFromItems.actifs} label="Actifs" color="bg-[#0FD52F]" />
+        <MiniStatCard value={statsFromItems.bannis} label="Bannis" color="bg-[#F92330]" />
+        <MiniStatCard value={statsFromItems.inactifs} label="Inactifs" color="bg-[#FFC800]" />
       </div>
 
-      {/* ── Empty state ── */}
-      {items.length === 0 && !loading && (
-        <div className="flex flex-col items-center justify-center gap-3 rounded-[6px] border border-dashed border-[#303060] bg-[#272746] p-10 text-center">
-          <div className="grid h-12 w-12 place-items-center rounded-full bg-[#1F1F3E] text-[#BEBECE]">
+      {/* ── Search + Filters ── */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#BEBECE]/40" />
+          <input
+            type="text"
+            placeholder="Rechercher par pseudo ou email..."
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                handleSearch();
+              }
+            }}
+            className="h-[42px] w-full rounded-[6px] border border-white/5 bg-[#141433]/50 pl-10 pr-4 text-[13px] text-white placeholder:text-[#BEBECE]/30 focus:border-[#2596FF]/40 focus:outline-none"
+          />
+        </div>
+
+        {/* Role filter */}
+        <select
+          value={roleId ?? ""}
+          onChange={(e) => {
+            const next = e.target.value || undefined;
+            setRoleId(next);
+            void getUsers({ page: 1, role: next });
+          }}
+          className="h-[42px] rounded-[6px] border border-white/5 bg-[#141433]/50 px-3 text-[13px] text-[#BEBECE] focus:border-[#2596FF]/40 focus:outline-none sm:w-[170px]"
+        >
+          <option value="">Tous les rôles</option>
+          {roleOptions.map((o) => (
+            <option key={o.value} value={o.value}>{o.label}</option>
+          ))}
+        </select>
+
+        {/* Status filter */}
+        <select
+          value={statusFilter ?? ""}
+          onChange={(e) => {
+            const next = e.target.value || undefined;
+            setStatusFilter(next);
+            void getUsers({ page: 1, status: next });
+          }}
+          className="h-[42px] rounded-[6px] border border-white/5 bg-[#141433]/50 px-3 text-[13px] text-[#BEBECE] focus:border-[#2596FF]/40 focus:outline-none sm:w-[170px]"
+        >
+          <option value="">Tous les statuts</option>
+          <option value="active">Actif</option>
+          <option value="suspended">Banni</option>
+          <option value="inactive">Inactif</option>
+        </select>
+
+        <span className="shrink-0 text-[12px] text-[#BEBECE]/40">
+          {total} utilisateur{total !== 1 ? "s" : ""}
+        </span>
+      </div>
+
+      {/* ── Table ── */}
+      {loading && items.length === 0 ? (
+        <div className="py-12 text-center text-[13px] text-[#BEBECE]/40">Chargement...</div>
+      ) : items.length === 0 ? (
+        <div className="flex flex-col items-center justify-center gap-3 rounded-[8px] border border-dashed border-white/10 bg-[#141433]/30 p-12 text-center">
+          <div className="grid h-12 w-12 place-items-center rounded-full bg-white/5 text-[#BEBECE]/30">
             <Users className="h-6 w-6" />
           </div>
-          <p className="text-[15px] font-bold text-white">
-            Aucun utilisateur trouvé
-          </p>
-          <p className="max-w-sm text-[13px] text-[#BEBECE]">
-            Essaie une recherche plus large ou retire le filtre de rôle.
+          <p className="text-[14px] font-semibold text-white">Aucun utilisateur trouvé</p>
+          <p className="max-w-sm text-[12px] text-[#BEBECE]/40">
+            Essaie une recherche plus large ou retire les filtres.
           </p>
         </div>
-      )}
+      ) : (
+        <div className="overflow-x-auto rounded-[8px] border border-white/5">
+          <table className="w-full min-w-[800px] text-left">
+            <thead>
+              <tr className="border-b border-white/5 bg-[#141433]/50">
+                <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-[#BEBECE]/50">Utilisateur</th>
+                <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-[#BEBECE]/50">Email</th>
+                <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-[#BEBECE]/50">Rôle</th>
+                <th className="px-4 py-3 text-[11px] font-bold uppercase tracking-wider text-[#BEBECE]/50">Statut</th>
+                <th className="px-4 py-3 text-right text-[11px] font-bold uppercase tracking-wider text-[#BEBECE]/50">Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {items.map((user) => {
+                const isSuspended = String(user.status || "").toLowerCase() === "suspended";
+                const isInactive = String(user.status || "").toLowerCase() === "inactive" || String(user.status || "").toLowerCase() === "draft";
+                const displayRole = (user._roleName && user._roleName.trim()) || (typeof user.role === "object" ? ((user.role as { name?: string }).name || "") : "") || "Membre";
+                const roleBadge = getRoleBadge(displayRole);
+                const initials = getInitials(user);
 
-      {/* ── User list ── */}
-      {items.length > 0 && (
-        <div className="space-y-2">
-          {items.map((user) => {
-            const currentRoleId =
-              typeof user.role === "object"
-                ? (user.role as { id?: string })?.id
-                : user.role;
-            const selectedRole =
-              selectedRoles[user.id] ??
-              (currentRoleId ? String(currentRoleId) : undefined);
-            const isSaving = savingId === user.id;
-            const isBanBusy = banLoadingId === user.id;
-            const isDeleteBusy = deleteLoadingId === user.id;
-            const isSuspended =
-              String(user.status || "").toLowerCase() === "suspended";
-            const displayRole =
-              (user._roleName && user._roleName.trim()) ||
-              (typeof user.role === "object"
-                ? ((user.role as { name?: string }).name || "")
-                : "") ||
-              "Sans rôle";
+                return (
+                  <tr
+                    key={user.id}
+                    className="border-b border-white/[0.03] transition-colors hover:bg-white/[0.02]"
+                  >
+                    {/* User */}
+                    <td className="px-4 py-3">
+                      <div className="flex items-center gap-3">
+                        <div className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#2596FF]/20 text-[11px] font-bold uppercase text-[#2596FF]">
+                          {initials}
+                        </div>
+                        <span className="text-[13px] font-semibold text-white">
+                          {formatFullName(user)}
+                        </span>
+                      </div>
+                    </td>
 
-            return (
-              <article
-                key={user.id}
-                className="rounded-[6px] border border-[#141433] bg-[#272746] p-4"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  {/* User info */}
-                  <div className="min-w-0 flex-1">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <h3 className="text-sm font-bold text-white">
-                        {formatFullName(user)}
-                      </h3>
-                      <Badge
-                        className={
-                          isSuspended
-                            ? "border-0 bg-red-500/20 text-red-400"
-                            : "border-0 bg-green-500/20 text-green-400"
-                        }
-                      >
-                        {isSuspended ? "Suspendu" : "Actif"}
-                      </Badge>
-                      {user._flags?.isFounder && (
-                        <Badge className="border-0 bg-[#FFC800]/15 text-[#FFC800]">
-                          Fondateur
-                        </Badge>
+                    {/* Email */}
+                    <td className="px-4 py-3 text-[13px] text-[#BEBECE]/60">
+                      {user.email || "—"}
+                    </td>
+
+                    {/* Role */}
+                    <td className="px-4 py-3">
+                      <span className={`inline-block rounded-full px-2.5 py-1 text-[10px] font-bold uppercase ${roleBadge.bg} ${roleBadge.text}`}>
+                        {displayRole}
+                      </span>
+                    </td>
+
+                    {/* Status */}
+                    <td className="px-4 py-3">
+                      {isSuspended ? (
+                        <span className="text-[11px] font-bold uppercase text-[#F92330]">Banni</span>
+                      ) : isInactive ? (
+                        <span className="text-[11px] font-bold uppercase text-[#FFC800]">Inactif</span>
+                      ) : (
+                        <span className="text-[11px] font-bold uppercase text-[#0FD52F]">Actif</span>
                       )}
-                      {user._flags?.isAdmin && !user._flags?.isFounder && (
-                        <Badge className="border-0 bg-[#2596FF]/15 text-[#2596FF]">
-                          Admin
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="mt-1 text-xs text-[#BEBECE]">
-                      {user.email || "Email non renseigné"} · {displayRole}
-                    </p>
-                  </div>
+                    </td>
 
-                  {/* ── Actions dropdown ── */}
-                  <div className="relative">
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setMenuOpen(menuOpen === user.id ? null : user.id)
-                      }
-                      className="grid h-[36px] w-[36px] place-items-center rounded-[4px] border border-[#141433] bg-[#25254D] text-[#BEBECE] transition-colors hover:bg-[#303060] hover:text-white"
-                      aria-label="Actions"
-                    >
-                      <MoreHorizontal className="h-4 w-4" />
-                    </button>
-
-                    {menuOpen === user.id && (
-                      <>
-                        {/* Close on click outside */}
-                        <div
-                          className="fixed inset-0 z-40"
-                          onClick={() => setMenuOpen(null)}
-                          role="presentation"
-                        />
-                        <div className="absolute right-0 top-[40px] z-50 w-[200px] rounded-[6px] border border-[#141433] bg-[#25254D] py-1 shadow-xl">
-                          {/* Role selector */}
-                          <div className="px-2 py-1.5">
-                            <label className="mb-1 block text-[10px] font-bold uppercase tracking-wider text-[#BEBECE]/60">
-                              Rôle
-                            </label>
-                            <Select
-                              value={selectedRole}
-                              onValueChange={(value) => {
-                                setSelectedRoles((c) => ({
-                                  ...c,
-                                  [user.id]: value,
-                                }));
-                                const roleName =
-                                  roles.find((r) => r.id === value)?.name ||
-                                  value;
-                                setConfirmState({
-                                  type: "role",
-                                  user,
-                                  roleId: value,
-                                  roleName,
-                                });
-                                setMenuOpen(null);
-                              }}
-                              disabled={isSaving}
-                            >
-                              <SelectTrigger className="h-[32px] w-full rounded-[4px] border-[#141433] bg-[#1F1F3E] text-[11px] text-white">
-                                <SelectValue placeholder="Rôle" />
-                              </SelectTrigger>
-                              <SelectContent className="border-[#141433] bg-[#25254D] text-white">
-                                {roleOptions.map((o) => (
-                                  <SelectItem
-                                    key={o.value}
-                                    value={String(o.value)}
-                                  >
-                                    {o.label}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-
-                          <div className="my-1 h-px bg-white/10" />
-
-                          {/* History */}
-                          <UserHistoryModal
-                            userId={user.id}
-                            userName={formatFullName(user)}
-                            trigger={
-                              <button
-                                type="button"
-                                className="flex w-full items-center gap-2 px-3 py-2 text-[12px] text-[#BEBECE] transition-colors hover:bg-[#303060] hover:text-white"
-                                onClick={() => setMenuOpen(null)}
-                              >
-                                <History className="h-3.5 w-3.5" />
-                                Historique
-                              </button>
-                            }
-                          />
-
-                          {/* Coins */}
+                    {/* Actions */}
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-1">
+                        {/* Edit role */}
+                        <div className="relative group">
+                          <select
+                            value={selectedRoles[user.id] ?? ""}
+                            onChange={(e) => {
+                              if (e.target.value) handleRoleChange(user, e.target.value);
+                            }}
+                            disabled={savingId === user.id}
+                            className="h-[30px] w-[30px] cursor-pointer appearance-none rounded-[4px] bg-transparent text-transparent opacity-0 absolute inset-0 z-10"
+                            title="Changer le rôle"
+                          >
+                            <option value="">—</option>
+                            {roleOptions.map((o) => (
+                              <option key={o.value} value={o.value}>{o.label}</option>
+                            ))}
+                          </select>
                           <button
                             type="button"
-                            onClick={() => {
-                              setCoinsModal({
-                                userId: user.id,
-                                userName: formatFullName(user),
-                              });
-                              setCoinsAmount("");
-                              setMenuOpen(null);
-                            }}
-                            className="flex w-full items-center gap-2 px-3 py-2 text-[12px] text-[#FFC800] transition-colors hover:bg-[#303060]"
+                            className="grid h-[30px] w-[30px] place-items-center rounded-[4px] text-[#BEBECE]/50 transition-colors hover:bg-white/5 hover:text-[#2596FF]"
+                            title="Changer le rôle"
+                            tabIndex={-1}
                           >
-                            <Coins className="h-3.5 w-3.5" />
-                            Envoyer des coins
-                          </button>
-
-                          <div className="my-1 h-px bg-white/10" />
-
-                          {/* Ban/Unban */}
-                          <button
-                            type="button"
-                            disabled={isBanBusy}
-                            onClick={() => {
-                              setConfirmState({
-                                type: isSuspended ? "unban" : "ban",
-                                user,
-                              });
-                              setMenuOpen(null);
-                            }}
-                            className={`flex w-full items-center gap-2 px-3 py-2 text-[12px] transition-colors hover:bg-[#303060] ${
-                              isSuspended
-                                ? "text-green-400"
-                                : "text-orange-400"
-                            }`}
-                          >
-                            {isSuspended ? (
-                              <RotateCcw className="h-3.5 w-3.5" />
-                            ) : (
-                              <Ban className="h-3.5 w-3.5" />
-                            )}
-                            {isSuspended ? "Réactiver" : "Bannir"}
-                          </button>
-
-                          {/* Delete */}
-                          <button
-                            type="button"
-                            disabled={isDeleteBusy}
-                            onClick={() => {
-                              setConfirmState({ type: "delete", user });
-                              setMenuOpen(null);
-                            }}
-                            className="flex w-full items-center gap-2 px-3 py-2 text-[12px] text-red-400 transition-colors hover:bg-red-500/10"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                            Supprimer
+                            <Pencil className="h-3.5 w-3.5" />
                           </button>
                         </div>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </article>
-            );
-          })}
+
+                        {/* Ban / Unban */}
+                        <button
+                          type="button"
+                          onClick={() => setConfirmState({ type: isSuspended ? "unban" : "ban", user })}
+                          disabled={banLoadingId === user.id}
+                          className={`grid h-[30px] w-[30px] place-items-center rounded-[4px] transition-colors hover:bg-white/5 ${
+                            isSuspended
+                              ? "text-[#0FD52F]/60 hover:text-[#0FD52F]"
+                              : "text-[#BEBECE]/50 hover:text-[#FFC800]"
+                          }`}
+                          title={isSuspended ? "Réactiver" : "Bannir"}
+                        >
+                          <Ban className="h-3.5 w-3.5" />
+                        </button>
+
+                        {/* Delete */}
+                        <button
+                          type="button"
+                          onClick={() => setConfirmState({ type: "delete", user })}
+                          disabled={deleteLoadingId === user.id}
+                          className="grid h-[30px] w-[30px] place-items-center rounded-[4px] text-[#BEBECE]/50 transition-colors hover:bg-red-500/10 hover:text-[#F92330]"
+                          title="Supprimer"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
         </div>
       )}
 
       {/* ── Pagination ── */}
-      <div className="flex items-center justify-between rounded-[6px] border border-[#141433] bg-[#272746] px-4 py-3 text-sm text-[#BEBECE]">
-        <span>{loading ? "Chargement..." : `${total} résultat(s)`}</span>
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            disabled={page <= 1 || loading}
-            onClick={() => void getUsers({ page: Math.max(1, page - 1) })}
-            className="h-[36px] w-[36px] rounded-[4px] border-[#141433] bg-[#25254D] text-white hover:bg-[#303060]"
-          >
-            <ChevronLeft className="h-4 w-4" />
-          </Button>
-          <span className="min-w-[60px] text-center text-xs">
-            {page}/{pageCount}
+      {items.length > 0 && (
+        <div className="flex items-center justify-between">
+          <span className="text-[12px] text-[#BEBECE]/40">
+            Affichage de {items.length} sur {total} utilisateur{total !== 1 ? "s" : ""}
           </span>
-          <Button
-            type="button"
-            variant="outline"
-            size="icon"
-            disabled={loading || items.length === 0 || items.length < LIMIT}
-            onClick={() => void getUsers({ page: page + 1 })}
-            className="h-[36px] w-[36px] rounded-[4px] border-[#141433] bg-[#25254D] text-white hover:bg-[#303060]"
-          >
-            <ChevronRight className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              disabled={page <= 1 || loading}
+              onClick={() => void getUsers({ page: Math.max(1, page - 1) })}
+              className="grid h-[32px] w-[32px] place-items-center rounded-[4px] text-[#BEBECE]/50 transition-colors hover:bg-white/5 hover:text-white disabled:opacity-30"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+
+            {/* Page numbers */}
+            {Array.from({ length: Math.min(pageCount, 5) }, (_, i) => {
+              let pageNum: number;
+              if (pageCount <= 5) {
+                pageNum = i + 1;
+              } else if (page <= 3) {
+                pageNum = i + 1;
+              } else if (page >= pageCount - 2) {
+                pageNum = pageCount - 4 + i;
+              } else {
+                pageNum = page - 2 + i;
+              }
+              return (
+                <button
+                  key={pageNum}
+                  type="button"
+                  onClick={() => void getUsers({ page: pageNum })}
+                  disabled={loading}
+                  className={`grid h-[32px] w-[32px] place-items-center rounded-[4px] text-[12px] font-bold transition-colors ${
+                    pageNum === page
+                      ? "bg-[#2596FF] text-white"
+                      : "text-[#BEBECE]/50 hover:bg-white/5 hover:text-white"
+                  }`}
+                >
+                  {pageNum}
+                </button>
+              );
+            })}
+
+            <button
+              type="button"
+              disabled={loading || items.length === 0 || items.length < LIMIT}
+              onClick={() => void getUsers({ page: page + 1 })}
+              className="grid h-[32px] w-[32px] place-items-center rounded-[4px] text-[#BEBECE]/50 transition-colors hover:bg-white/5 hover:text-white disabled:opacity-30"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* ── Coins Modal ── */}
       {coinsModal && (
@@ -721,26 +638,19 @@ export default function AdminUsersPanel({
           aria-modal="true"
         >
           <div
-            className="w-full max-w-[400px] rounded-[8px] border border-[#1F1F3E] bg-[#272746] p-6 shadow-2xl"
+            className="w-full max-w-[400px] rounded-[8px] border border-white/5 bg-[#1A1A3A] p-6 shadow-2xl"
             onClick={(e) => e.stopPropagation()}
             onKeyDown={(e) => {
               if (e.key === "Escape") setCoinsModal(null);
             }}
           >
-            <h3 className="text-[16px] font-bold text-white">
-              Envoyer des HabbOneCoins
-            </h3>
-            <p className="mt-1 text-[13px] text-[#BEBECE]">
-              Destinataire :{" "}
-              <span className="font-bold text-[#2596FF]">
-                {coinsModal.userName}
-              </span>
+            <h3 className="text-[16px] font-bold text-white">Envoyer des HabbOneCoins</h3>
+            <p className="mt-1 text-[13px] text-[#BEBECE]/60">
+              Destinataire : <span className="font-bold text-[#2596FF]">{coinsModal.userName}</span>
             </p>
 
             <div className="mt-4">
-              <label className="mb-1 block text-[11px] font-bold uppercase text-[#BEBECE]/70">
-                Montant
-              </label>
+              <label className="mb-1 block text-[11px] font-bold uppercase text-[#BEBECE]/50">Montant</label>
               <input
                 type="number"
                 min={1}
@@ -753,7 +663,7 @@ export default function AdminUsersPanel({
                   if (e.key === "Enter") handleSendCoins();
                   if (e.key === "Escape") setCoinsModal(null);
                 }}
-                className="w-full rounded-[4px] border border-[#141433] bg-[#1F1F3E] px-3 py-2.5 text-[14px] text-white placeholder:text-[#BEBECE]/40 focus:border-[#FFC800] focus:outline-none"
+                className="w-full rounded-[6px] border border-white/5 bg-[#141433]/50 px-3 py-2.5 text-[14px] text-white placeholder:text-[#BEBECE]/30 focus:border-[#FFC800]/40 focus:outline-none"
               />
             </div>
 
@@ -774,17 +684,15 @@ export default function AdminUsersPanel({
               <button
                 type="button"
                 onClick={() => setCoinsModal(null)}
-                className="h-[36px] rounded-[4px] border border-[#141433] bg-[#25254D] px-4 text-[13px] font-bold text-white transition-colors hover:bg-[#303060]"
+                className="h-[36px] rounded-[6px] border border-white/5 bg-[#141433]/50 px-4 text-[13px] font-bold text-white transition-colors hover:bg-white/5"
               >
                 Annuler
               </button>
               <button
                 type="button"
                 onClick={handleSendCoins}
-                disabled={
-                  coinsSending || !coinsAmount || parseInt(coinsAmount, 10) <= 0
-                }
-                className="h-[36px] rounded-[4px] bg-[#FFC800] px-4 text-[13px] font-bold text-black transition-colors hover:bg-[#E6B400] disabled:opacity-50"
+                disabled={coinsSending || !coinsAmount || parseInt(coinsAmount, 10) <= 0}
+                className="h-[36px] rounded-[6px] bg-[#FFC800] px-4 text-[13px] font-bold text-black transition-colors hover:bg-[#E6B400] disabled:opacity-50"
               >
                 <span className="inline-flex items-center gap-1.5">
                   <Coins className="h-3.5 w-3.5" />
@@ -816,10 +724,33 @@ export default function AdminUsersPanel({
   );
 }
 
+/* ------------------------------------------------------------------ */
+/*  Sub-components                                                     */
+/* ------------------------------------------------------------------ */
+
+function MiniStatCard({ value, label, color }: { value: number; label: string; color: string }) {
+  return (
+    <div className="flex items-center gap-3 rounded-[8px] border border-white/5 bg-[#141433]/50 px-4 py-3.5">
+      <div className={`grid h-8 w-8 shrink-0 place-items-center rounded-[6px] ${color} text-[13px] font-bold text-white`}>
+        {value}
+      </div>
+      <span className="text-[13px] text-[#BEBECE]/60">{label}</span>
+    </div>
+  );
+}
+
+/* ------------------------------------------------------------------ */
+/*  Helpers                                                            */
+/* ------------------------------------------------------------------ */
+
 function formatFullName(user: User) {
-  const fullName = [user.first_name, user.last_name]
-    .filter(Boolean)
-    .join(" ")
-    .trim();
+  const fullName = [user.first_name, user.last_name].filter(Boolean).join(" ").trim();
   return fullName || user.email || `Utilisateur ${user.id}`;
+}
+
+function getInitials(user: User): string {
+  const name = formatFullName(user);
+  const parts = name.split(/[\s@]+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return name.charAt(0).toUpperCase();
 }
