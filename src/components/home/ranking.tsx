@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react'
 import RankingClient from './ranking-client'
 
 type RankingEntry = { nick: string; score: number }
-type RankingData = Record<string, RankingEntry[]>
+type Category = 'comments' | 'articles' | 'topics' | 'coins'
+type RankingData = Record<Category, RankingEntry[]>
 
 export default function Ranking() {
   const [data, setData] = useState<RankingData | null>(null)
@@ -17,5 +18,5 @@ export default function Ranking() {
   }, [])
 
   if (!data) return null
-  return <RankingClient data={data as any} />
+  return <RankingClient data={data} />
 }

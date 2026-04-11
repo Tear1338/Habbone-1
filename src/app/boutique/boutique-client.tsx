@@ -196,7 +196,7 @@ export default function BoutiqueClient({
       setCoins((prev) => prev - item.preco)
 
       // Refresh items to update stock
-      const refreshRes = await fetch('/api/shop/items')
+      const refreshRes = await fetch('/api/shop/items', { cache: 'no-store' })
       const refreshJson = await refreshRes.json()
       if (refreshJson?.data) setItems(refreshJson.data)
     } catch (e: any) {

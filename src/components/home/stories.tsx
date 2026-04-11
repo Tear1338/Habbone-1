@@ -39,10 +39,10 @@ function resolveStoryTimestamp(row: Record<string, any>): number {
 
 export default async function Stories() {
   // Use server-side service token to ensure visibility even if collection isn't public
-  const rows = (await getCachedStories()) as any[]
+  const rows = await getCachedStories()
   const items = Array.isArray(rows)
     ? rows
-      .map((r: any) => {
+      .map((r: Record<string, any>) => {
         const src = mediaUrl(r.image ?? r.imagem ?? r.Image ?? r.Imagem ?? '')
         const author = String(r.autor ?? r.Autor ?? '')?.trim() || null
         const timestamp = resolveStoryTimestamp(r)
@@ -56,7 +56,7 @@ export default async function Stories() {
 
   // Ensure chronological order: newest on the left
   const sorted = Array.isArray(items)
-    ? [...items].sort((a: any, b: any) => {
+    ? [...items].sort((a, b) => {
       const diff = toTimestamp(b.timestamp ?? b.date) - toTimestamp(a.timestamp ?? a.date)
       if (diff !== 0) return diff
       // fallback to id desc if same/unknown date

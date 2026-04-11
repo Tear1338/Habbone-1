@@ -30,7 +30,7 @@ export default function AdminPubPanel() {
   const fetchItems = useCallback(async () => {
     setLoading(true);
     try {
-      const res = await fetch("/api/admin/pub");
+      const res = await fetch("/api/admin/pub", { cache: "no-store" });
       const json = await res.json();
       setItems(json?.data ?? []);
     } catch {

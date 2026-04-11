@@ -9,9 +9,9 @@ const getCachedTopics = unstable_cache(
 )
 
 export default async function ForumTopics() {
-    const topics = await getCachedTopics() as any[]
+    const topics = await getCachedTopics()
     const data = Array.isArray(topics)
-        ? topics.map((t: any) => ({
+        ? topics.map((t) => ({
             id: Number(t.id),
             titulo: t.titulo || '',
             autor: t.autor || '',

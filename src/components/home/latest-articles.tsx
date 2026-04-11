@@ -9,10 +9,10 @@ const getCachedNews = unstable_cache(
 )
 
 export default async function LatestArticles() {
-  const items = await getCachedNews() as any[]
+  const items = await getCachedNews()
   // Normalize minimal shape
   const data = Array.isArray(items)
-    ? items.map((n: any) => ({ id: Number(n.id), titulo: n.titulo, descricao: n.descricao ?? null, imagem: n.imagem ?? null }))
+    ? items.map((n) => ({ id: Number(n.id), titulo: n.titulo, descricao: n.descricao ?? null, imagem: n.imagem ?? null }))
     : []
   return <LatestArticlesClient items={data} />
 }
