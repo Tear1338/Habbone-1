@@ -45,10 +45,16 @@ type ArticleCard = {
   data?: string | number | null;
 };
 
-export default function ProfileClient({ nick }: { nick: string }) {
-  const { data, error, loading, refresh } = useHabboProfile(nick, {
+export default function ProfileClient({ nick, initialData }: { nick: string; initialData?: HabboProfileResponse | null }) {
+  const { data: fetchedData, error, loading: fetchLoading, refresh } = useHabboProfile(nick, {
     fallbackMessage: "Erreur de recuperation du profil",
+    // Skip client fetch if we already have server-side data
+    enabled: !initialData,
   });
+
+  // Use server-side data immediately, fall back to client-fetched data
+  const data = fetchedData ?? initialData ?? null;
+  const loading = !data && fetchLoading;
 
   const [topics, setTopics] = useState<TopicCard[]>([]);
   const [topicsLoading, setTopicsLoading] = useState(false);
