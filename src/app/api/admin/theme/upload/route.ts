@@ -3,7 +3,7 @@ import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
-import { assertAdmin } from '@/server/authz';
+import { withAdmin } from '@/server/api-helpers';
 import { directusUrl } from '@/server/directus/client';
 import { uploadFileToDirectus } from '@/server/directus/stories';
 import { isThemeStoredInDirectus, themeUploadDir, writeThemeSettings } from '@/server/theme-settings-store';
@@ -51,16 +51,7 @@ async function uploadToDirectusAssets(file: File): Promise<string> {
   return `${directusUrl}/assets/${encodeURIComponent(id)}`;
 }
 
-export async function POST(req: Request) {
-  try {
-    await assertAdmin();
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: error?.message || 'FORBIDDEN', code: 'FORBIDDEN' },
-      { status: error?.status || 403 },
-    );
-  }
-
+export const POST = withAdmin(async (req) => {
   const formData = await req.formData().catch(() => null);
   if (!formData) {
     return NextResponse.json({ error: 'INVALID_FORM_DATA', code: 'INVALID_FORM_DATA' }, { status: 400 });
@@ -107,5 +98,4 @@ export async function POST(req: Request) {
       { status: 500 },
     );
   }
-}
-
+});

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { assertAdmin } from '@/server/authz';
+import { withAdmin } from '@/server/api-helpers';
 import { uploadFileToDirectus } from '@/server/directus/stories';
 import { directusUrl } from '@/server/directus/client';
 
@@ -21,14 +21,7 @@ const ALLOWED_TYPES = new Set([
 ]);
 const MAX_SIZE = 5 * 1024 * 1024; // 5 MB
 
-export async function POST(req: Request) {
-  // Auth check
-  try {
-    await assertAdmin();
-  } catch {
-    return NextResponse.json({ error: 'FORBIDDEN' }, { status: 403 });
-  }
-
+export const POST = withAdmin(async (req) => {
   try {
     const formData = await req.formData();
     const file = formData.get('file');
@@ -74,4 +67,4 @@ export async function POST(req: Request) {
       { status: 500 },
     );
   }
-}
+});

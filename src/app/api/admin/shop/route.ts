@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { z } from 'zod';
-import { assertAdmin } from '@/server/authz';
+import { withAdmin } from '@/server/api-helpers';
 import { directusUrl, serviceToken } from '@/server/directus/client';
 import {
   createShopItem,
@@ -23,13 +23,7 @@ const ItemSchema = z.object({
   status: z.enum(['ativo', 'inativo']),
 });
 
-export async function GET(req: Request) {
-  try {
-    await assertAdmin();
-  } catch {
-    return NextResponse.json({ error: 'FORBIDDEN' }, { status: 403 });
-  }
-
+export const GET = withAdmin(async (req) => {
   const { searchParams } = new URL(req.url);
   const view = searchParams.get('view') || 'items';
 
@@ -58,15 +52,9 @@ export async function GET(req: Request) {
     console.error('[Admin Shop GET] Error:', e?.message);
     return NextResponse.json({ ok: true, data: [] });
   }
-}
+});
 
-export async function POST(req: Request) {
-  try {
-    await assertAdmin();
-  } catch {
-    return NextResponse.json({ error: 'FORBIDDEN' }, { status: 403 });
-  }
-
+export const POST = withAdmin(async (req) => {
   const body = await req.json().catch(() => null);
   if (!body?.action) {
     return NextResponse.json({ error: 'Action requise' }, { status: 400 });
@@ -127,4 +115,4 @@ export async function POST(req: Request) {
   }
 
   return NextResponse.json({ error: 'Action inconnue' }, { status: 400 });
-}
+});

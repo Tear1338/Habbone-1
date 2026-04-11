@@ -1,26 +1,12 @@
 import { NextResponse } from 'next/server'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/auth'
-import { checkRateLimit } from '@/server/rate-limit'
+import { withAuth } from '@/server/api-helpers'
 import { directusUrl, serviceToken } from '@/server/directus/client'
 
 const ALLOWED_MIME_SET = new Set(['image/png', 'image/jpeg', 'image/gif', 'image/webp'])
 const MAX_FILE_BYTES = 5 * 1024 * 1024 // 5MB
 
-export async function POST(req: Request): Promise<NextResponse> {
+export const POST = withAuth(async (req) => {
   try {
-    const rl = checkRateLimit(req, { key: 'upload:image', limit: 20, windowMs: 10 * 60 * 1000 })
-    if (!rl.ok) {
-      return NextResponse.json({ error: 'Trop de requêtes' }, { status: 429, headers: rl.headers })
-    }
-
-    const session = await getServerSession(authOptions)
-    const user = session?.user as { nick?: string | null } | undefined
-    const nick = typeof user?.nick === 'string' ? user.nick.trim() : ''
-    if (!nick) {
-      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
-    }
-
     const formData = await req.formData().catch(() => null)
     const file = formData?.get('file')
     if (!file || !(file instanceof File)) {
@@ -67,4 +53,4 @@ export async function POST(req: Request): Promise<NextResponse> {
       { status: 500 }
     )
   }
-}
+}, { key: 'upload:image', limit: 20, windowMs: 10 * 60 * 1000 })

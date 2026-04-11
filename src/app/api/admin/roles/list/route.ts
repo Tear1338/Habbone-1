@@ -1,18 +1,11 @@
 import { NextResponse } from 'next/server';
-import { assertAdmin } from '@/server/authz';
+import { withAdmin } from '@/server/api-helpers';
 import { listRoles } from '@/server/directus/roles';
 import { DEFAULT_ROLES } from '@/lib/config/roles';
-import { resolveHttpError } from '@/lib/http-error';
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
-  try {
-    await assertAdmin();
-  } catch (error: unknown) {
-    const { message, status, code } = resolveHttpError(error, 'FORBIDDEN', 403);
-    return NextResponse.json({ error: message, code: code ?? 'FORBIDDEN' }, { status });
-  }
+export const GET = withAdmin(async () => {
   // Roles hidden from the admin panel (internal/service roles)
   const HIDDEN_ROLES = new Set(['frontend service']);
 
@@ -32,4 +25,4 @@ export async function GET() {
     app_access: r.appAccess,
   }));
   return NextResponse.json({ data, meta: { virtual: true } });
-}
+});

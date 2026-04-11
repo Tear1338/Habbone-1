@@ -1,37 +1,19 @@
 import { NextResponse } from 'next/server'
 import { revalidateTag } from 'next/cache'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/auth'
-import { sanitizeCommentBody } from '@/server/comment-sanitize'
 import { z } from 'zod'
+import { withAuth } from '@/server/api-helpers'
+import { sanitizeCommentBody } from '@/server/comment-sanitize'
 import { createForumComment } from '@/server/directus/forum'
-import { checkRateLimit } from '@/server/rate-limit'
 import { buildError, formatZodError } from '@/types/api'
 
 const BodySchema = z.object({
   content: z.string().trim().min(1, 'Commentaire requis').max(5000, 'Commentaire trop long'),
 })
 
-export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
-  const { id } = await ctx.params
-  const topicId = Number(id || 0)
+export const POST = withAuth(async (req, { nick, params }) => {
+  const topicId = Number(params?.id || 0)
   if (!Number.isFinite(topicId) || topicId <= 0) {
     return NextResponse.json(buildError('Identifiant sujet invalide', { code: 'INVALID_ID' }), { status: 400 })
-  }
-
-  // Limit comment posting: 10 comments / 10 minutes per IP
-  const rl = checkRateLimit(req, { key: 'forum:comment', limit: 10, windowMs: 10 * 60 * 1000 })
-  if (!rl.ok) {
-    return NextResponse.json(
-      buildError('Trop de requêtes, réessayez plus tard.', { code: 'RATE_LIMITED' }),
-      { status: 429, headers: rl.headers }
-    )
-  }
-
-  const session = await getServerSession(authOptions)
-  const user = session?.user as { nick?: string; email?: string } | undefined
-  if (!user?.nick) {
-    return NextResponse.json(buildError('Authentification requise', { code: 'UNAUTHORIZED' }), { status: 401 })
   }
 
   let body: unknown
@@ -49,11 +31,11 @@ export async function POST(req: Request, ctx: { params: Promise<{ id: string }> 
   }
 
   try {
-    const created = await createForumComment({ topicId, author: String(user.nick), content: sanitizedHtml })
+    const created = await createForumComment({ topicId, author: nick, content: sanitizedHtml })
     revalidateTag('forum')
     revalidateTag('forum-topic-' + topicId)
     return NextResponse.json({ ok: true, data: created })
   } catch {
     return NextResponse.json(buildError('Echec de publication', { code: 'CREATE_FAILED' }), { status: 500 })
   }
-}
+}, { key: 'forum:comment', limit: 10, windowMs: 10 * 60 * 1000 })

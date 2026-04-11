@@ -1,18 +1,13 @@
 import { NextResponse } from 'next/server'
 import { revalidateTag } from 'next/cache'
 import { z } from 'zod'
-import { assertAdmin } from '@/server/authz'
+import { withAdmin } from '@/server/api-helpers'
 import { directusUrl, serviceToken } from '@/server/directus/client'
-import { checkRateLimit } from '@/server/rate-limit'
 
 export const dynamic = 'force-dynamic';
 
 // GET: list all pubs
-export async function GET(req: Request) {
-  try { await assertAdmin() } catch (e: any) {
-    return NextResponse.json({ error: e?.message || 'FORBIDDEN' }, { status: e?.status || 403 })
-  }
-
+export const GET = withAdmin(async () => {
   const url = new URL(`${directusUrl}/items/parceiros`)
   url.searchParams.set('fields', 'id,nome,link,imagem,status')
   url.searchParams.set('sort', '-id')
@@ -24,7 +19,7 @@ export async function GET(req: Request) {
   if (!res.ok) return NextResponse.json({ data: [] })
   const json = await res.json()
   return NextResponse.json({ data: json?.data ?? [] })
-}
+});
 
 const CreateSchema = z.object({
   nome: z.string().min(1, 'Nom requis').max(100),
@@ -46,14 +41,7 @@ const DeleteSchema = z.object({
 })
 
 // POST: create, update or delete pub
-export async function POST(req: Request) {
-  const rl = checkRateLimit(req, { key: 'admin:pub', limit: 30, windowMs: 60 * 1000 })
-  if (!rl.ok) return NextResponse.json({ error: 'RATE_LIMITED' }, { status: 429, headers: rl.headers })
-
-  try { await assertAdmin() } catch (e: any) {
-    return NextResponse.json({ error: e?.message || 'FORBIDDEN' }, { status: e?.status || 403 })
-  }
-
+export const POST = withAdmin(async (req) => {
   const body = await req.json().catch(() => null)
   if (!body) return NextResponse.json({ error: 'INVALID_BODY' }, { status: 400 })
 
@@ -111,4 +99,4 @@ export async function POST(req: Request) {
   revalidateTag('pub');
   revalidateTag('home');
   return NextResponse.json({ ok: true, data: json?.data })
-}
+}, { key: 'admin:pub', limit: 30, windowMs: 60_000 });

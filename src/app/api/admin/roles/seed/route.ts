@@ -1,17 +1,9 @@
 import { NextResponse } from 'next/server';
-import { assertAdmin } from '@/server/authz';
+import { withAdmin } from '@/server/api-helpers';
 import { createRole, listRoles } from '@/server/directus/roles';
 import { DEFAULT_ROLES } from '@/lib/config/roles';
-import { resolveHttpError } from '@/lib/http-error';
 
-export async function POST() {
-  try {
-    await assertAdmin();
-  } catch (error: unknown) {
-    const { message, status, code } = resolveHttpError(error, 'FORBIDDEN', 403);
-    return NextResponse.json({ error: message, code: code ?? 'FORBIDDEN' }, { status });
-  }
-
+export const POST = withAdmin(async () => {
   try {
     const existing = await listRoles().catch(() => [] as const);
     const existingNames = new Set(existing.map((role) => role.name.toLowerCase()));
@@ -32,10 +24,9 @@ export async function POST() {
     return NextResponse.json({ data: { created, skipped } });
   } catch (error: unknown) {
     // soft fallback: pretend roles are ready
-    const { message } = resolveHttpError(error, 'ROLE_SEED_FAILED', 500);
     return NextResponse.json(
-      { data: { created: DEFAULT_ROLES.map((r) => r.name), skipped: [] }, code: 'VIRTUAL_SEED', error: message },
+      { data: { created: DEFAULT_ROLES.map((r) => r.name), skipped: [] }, code: 'VIRTUAL_SEED', error: String(error) },
       { status: 200 }
     );
   }
-}
+});

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { assertAdmin } from '@/server/authz';
+import { withAdmin } from '@/server/api-helpers';
 import { updateRole } from '@/server/directus/roles';
 import { resolveHttpError } from '@/lib/http-error';
 
@@ -12,13 +12,7 @@ const Body = z.object({
   appAccess: z.boolean().optional(),
 });
 
-export async function POST(req: Request) {
-  try {
-    await assertAdmin();
-  } catch (error: unknown) {
-    const { message, status, code } = resolveHttpError(error, 'FORBIDDEN', 403);
-    return NextResponse.json({ error: message, code: code ?? 'FORBIDDEN' }, { status });
-  }
+export const POST = withAdmin(async (req) => {
   const parsed = Body.safeParse(await req.json());
   if (!parsed.success) {
     return NextResponse.json({ error: 'INVALID_BODY', code: 'INVALID_BODY' }, { status: 400 });
@@ -31,4 +25,4 @@ export async function POST(req: Request) {
     const { message, status, code } = resolveHttpError(error, 'UPDATE_ROLE_FAILED', 500);
     return NextResponse.json({ error: message, code: code ?? 'UPDATE_ROLE_FAILED' }, { status });
   }
-}
+});

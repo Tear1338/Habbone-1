@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { assertAdmin } from '@/server/authz';
+import { withAdmin } from '@/server/api-helpers';
 import {
   listAdminNotifications,
   markNotificationRead,
@@ -9,28 +9,16 @@ import {
 
 export const dynamic = 'force-dynamic';
 
-export async function GET() {
-  try {
-    await assertAdmin();
-  } catch {
-    return NextResponse.json({ error: 'FORBIDDEN' }, { status: 403 });
-  }
-
+export const GET = withAdmin(async () => {
   const [notifications, unreadCount] = await Promise.all([
     listAdminNotifications({ limit: 30 }),
     countUnreadNotifications(),
   ]);
 
   return NextResponse.json({ ok: true, data: notifications, unreadCount });
-}
+});
 
-export async function POST(req: Request) {
-  try {
-    await assertAdmin();
-  } catch {
-    return NextResponse.json({ error: 'FORBIDDEN' }, { status: 403 });
-  }
-
+export const POST = withAdmin(async (req) => {
   const body = await req.json().catch(() => null);
   const { action } = body || {};
 
@@ -47,4 +35,4 @@ export async function POST(req: Request) {
   }
 
   return NextResponse.json({ error: 'Action inconnue' }, { status: 400 });
-}
+});

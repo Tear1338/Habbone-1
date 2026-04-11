@@ -1,12 +1,10 @@
 import { NextResponse } from "next/server";
 import { revalidateTag } from 'next/cache';
 import { z } from "zod";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/auth";
+import { withAuth } from '@/server/api-helpers';
 import { createNewsComment } from "@/server/directus/news";
 import { buildError, formatZodError } from "@/types/api";
 import { sanitizeCommentBody } from "@/server/comment-sanitize";
-import { checkRateLimit } from '@/server/rate-limit'
 
 const BodySchema = z.object({
   content: z
@@ -16,32 +14,11 @@ const BodySchema = z.object({
     .max(5000, "Commentaire trop long"),
 });
 
-export async function POST(
-  req: Request,
-  ctx: { params: Promise<{ id: string }> },
-) {
-  const routeParams = await ctx.params;
-  const newsId = Number(routeParams?.id ?? 0);
+export const POST = withAuth(async (req, { nick, user, params }) => {
+  const newsId = Number(params?.id ?? 0);
   if (!Number.isFinite(newsId) || newsId <= 0) {
     return NextResponse.json(buildError("Identifiant article invalide", { code: "INVALID_ID" }), {
       status: 400,
-    });
-  }
-
-  // Limit comment posting: 10 comments / 10 minutes per IP
-  const rl = checkRateLimit(req, { key: 'news:comment', limit: 10, windowMs: 10 * 60 * 1000 })
-  if (!rl.ok) {
-    return NextResponse.json(
-      buildError('Trop de requêtes, réessayez plus tard.', { code: 'RATE_LIMITED' }),
-      { status: 429, headers: rl.headers }
-    )
-  }
-
-  const session = await getServerSession(authOptions);
-  const user = session?.user as { nick?: string; email?: string } | undefined;
-  if (!user?.nick) {
-    return NextResponse.json(buildError("Authentification requise", { code: "UNAUTHORIZED" }), {
-      status: 401,
     });
   }
 
@@ -73,7 +50,7 @@ export async function POST(
   try {
     const created = await createNewsComment({
       newsId,
-      author: String(user.nick || user.email || "Anonyme"),
+      author: String(nick || user?.email || "Anonyme"),
       content: sanitizedHtml,
     });
     revalidateTag('news');
@@ -84,4 +61,4 @@ export async function POST(
       status: 500 },
     );
   }
-}
+}, { key: 'news:comment', limit: 10, windowMs: 10 * 60 * 1000 })

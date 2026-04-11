@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { revalidateTag } from 'next/cache';
 import { z } from 'zod';
-import { assertAdmin } from '@/server/authz';
+import { withAdmin } from '@/server/api-helpers';
 import { readThemeSettings, writeThemeSettings } from '@/server/theme-settings-store';
 
 const Body = z.object({
@@ -14,16 +14,7 @@ const Body = z.object({
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-export async function GET() {
-  try {
-    await assertAdmin();
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: error?.message || 'FORBIDDEN', code: 'FORBIDDEN' },
-      { status: error?.status || 403 },
-    );
-  }
-
+export const GET = withAdmin(async () => {
   try {
     const data = await readThemeSettings();
     return NextResponse.json(
@@ -40,18 +31,9 @@ export async function GET() {
       { status: 500 },
     );
   }
-}
+});
 
-export async function POST(req: Request) {
-  try {
-    await assertAdmin();
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: error?.message || 'FORBIDDEN', code: 'FORBIDDEN' },
-      { status: error?.status || 403 },
-    );
-  }
-
+export const POST = withAdmin(async (req) => {
   const parsed = Body.safeParse(await req.json().catch(() => null));
   if (!parsed.success) {
     return NextResponse.json({ error: 'INVALID_BODY', code: 'INVALID_BODY' }, { status: 400 });
@@ -67,4 +49,4 @@ export async function POST(req: Request) {
       { status: 500 },
     );
   }
-}
+});

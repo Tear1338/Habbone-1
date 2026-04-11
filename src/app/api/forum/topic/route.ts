@@ -1,10 +1,8 @@
 import { NextResponse } from 'next/server'
 import { revalidateTag } from 'next/cache'
-import { getServerSession } from 'next-auth'
 import { z } from 'zod'
-import { authOptions } from '@/auth'
+import { withAuth } from '@/server/api-helpers'
 import { createForumTopic } from '@/server/directus/forum'
-import { checkRateLimit } from '@/server/rate-limit'
 import { sanitizeRichContentHtml, sanitizePlainText } from '@/server/comment-sanitize'
 
 export const dynamic = 'force-dynamic';
@@ -16,20 +14,8 @@ const TopicBodySchema = z.object({
   cat_id: z.union([z.number(), z.string(), z.null()]).optional().default(null),
 })
 
-export async function POST(req: Request): Promise<NextResponse> {
+export const POST = withAuth(async (req, { nick }) => {
   try {
-    const rl = checkRateLimit(req, { key: 'forum:topic:create', limit: 5, windowMs: 10 * 60 * 1000 })
-    if (!rl.ok) {
-      return NextResponse.json({ error: 'Trop de requêtes' }, { status: 429, headers: rl.headers })
-    }
-
-    const session = await getServerSession(authOptions)
-    const user = session?.user as { nick?: string | null } | undefined
-    const nick = typeof user?.nick === 'string' ? user.nick.trim() : ''
-    if (!nick) {
-      return NextResponse.json({ error: 'Non authentifié' }, { status: 401 })
-    }
-
     const body = await req.json().catch(() => null)
     const parsed = TopicBodySchema.safeParse(body)
     if (!parsed.success) {
@@ -65,4 +51,4 @@ export async function POST(req: Request): Promise<NextResponse> {
       { status: 500 }
     )
   }
-}
+}, { key: 'forum:topic:create', limit: 5, windowMs: 10 * 60 * 1000 })

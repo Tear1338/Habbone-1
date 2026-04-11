@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
-import { assertAdmin } from '@/server/authz'
-import { checkRateLimit } from '@/server/rate-limit'
+import { withAdmin } from '@/server/api-helpers'
 import { directusUrl, serviceToken, USERS_TABLE } from '@/server/directus/client'
 
 const BodySchema = z.object({
@@ -32,18 +31,7 @@ async function updateUserCoins(id: string, newBalance: number) {
   return json?.data ?? null
 }
 
-export async function POST(req: Request) {
-  const rl = checkRateLimit(req, { key: 'admin:users:coins', limit: 30, windowMs: 60 * 1000 })
-  if (!rl.ok) {
-    return NextResponse.json({ error: 'RATE_LIMITED' }, { status: 429, headers: rl.headers })
-  }
-
-  try {
-    await assertAdmin()
-  } catch (e: any) {
-    return NextResponse.json({ error: e?.message || 'FORBIDDEN' }, { status: e?.status || 403 })
-  }
-
+export const POST = withAdmin(async (req) => {
   const body = await req.json().catch(() => null)
   const parsed = BodySchema.safeParse(body)
   if (!parsed.success) {
@@ -73,4 +61,4 @@ export async function POST(req: Request) {
     added: amount,
     newBalance,
   })
-}
+}, { key: 'admin:users:coins', limit: 30, windowMs: 60_000 })
