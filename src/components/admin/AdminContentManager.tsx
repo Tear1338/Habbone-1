@@ -69,7 +69,7 @@ interface AdminContentManagerProps {
 }
 
 const PAGE_SIZE = 20;
-const DIRECTUS_BASE_URL = (process.env.NEXT_PUBLIC_DIRECTUS_URL || "https://api.habbone.fr").replace(/\/$/, "");
+const DIRECTUS_BASE_URL = (process.env.NEXT_PUBLIC_DIRECTUS_URL || "").replace(/\/$/, "");
 const CONTENT_ORDER: ContentType[] = ["articles", "topics", "posts", "forumComments", "newsComments", "stories"];
 
 const CONTENT_SECTIONS: Record<ContentType, { label: string; description: string }> = {

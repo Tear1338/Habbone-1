@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { directusUrl, serviceToken } from '@/server/directus/client'
+import { directusFetch } from '@/server/directus/fetch'
 
 export const dynamic = 'force-dynamic'
 
@@ -7,33 +7,31 @@ type RankingEntry = { nick: string; score: number }
 type RankingCategory = 'comments' | 'articles' | 'topics' | 'coins'
 type RankingResponse = Record<RankingCategory, RankingEntry[]>
 
+// Max rows to fetch for ranking aggregation (safety cap)
+const MAX_RANKING_ROWS = 10000
+
 async function fetchAllAutors(table: string, field = 'autor'): Promise<string[]> {
-  const url = new URL(`${directusUrl}/items/${encodeURIComponent(table)}`)
-  url.searchParams.set('fields', field)
-  url.searchParams.set('limit', '-1')
-  const res = await fetch(url.toString(), {
-    headers: { Authorization: `Bearer ${serviceToken}` },
-    cache: 'no-store',
-  })
-  if (!res.ok) return []
-  const json = await res.json()
-  return (json?.data ?? []).map((r: any) => String(r?.[field] || '').trim()).filter(Boolean)
+  try {
+    const json = await directusFetch<{ data: Record<string, unknown>[] }>(`/items/${encodeURIComponent(table)}`, {
+      params: { fields: field, limit: String(MAX_RANKING_ROWS) },
+    })
+    return (json?.data ?? []).map((r: any) => String(r?.[field] || '').trim()).filter(Boolean)
+  } catch {
+    return []
+  }
 }
 
 async function fetchTopCoins(limit: number): Promise<RankingEntry[]> {
-  const url = new URL(`${directusUrl}/items/usuarios`)
-  url.searchParams.set('fields', 'nick,moedas')
-  url.searchParams.set('sort', '-moedas')
-  url.searchParams.set('limit', String(limit))
-  const res = await fetch(url.toString(), {
-    headers: { Authorization: `Bearer ${serviceToken}` },
-    cache: 'no-store',
-  })
-  if (!res.ok) return []
-  const json = await res.json()
-  return (json?.data ?? [])
-    .filter((r: any) => r?.nick && Number(r?.moedas) > 0)
-    .map((r: any) => ({ nick: String(r.nick), score: Number(r.moedas) || 0 }))
+  try {
+    const json = await directusFetch<{ data: { nick: string; moedas: number }[] }>('/items/usuarios', {
+      params: { fields: 'nick,moedas', sort: '-moedas', limit: String(limit) },
+    })
+    return (json?.data ?? [])
+      .filter((r) => r?.nick && Number(r?.moedas) > 0)
+      .map((r) => ({ nick: String(r.nick), score: Number(r.moedas) || 0 }))
+  } catch {
+    return []
+  }
 }
 
 function countByAutor(autors: string[], limit: number): RankingEntry[] {

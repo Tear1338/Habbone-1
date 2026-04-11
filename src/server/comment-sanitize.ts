@@ -17,7 +17,8 @@ export function encodeEmojis(text: string): string {
   );
 }
 
-export function decodeEmojis(text: string): string {
+// Kept for potential future use (reverse of encodeEmojis)
+function decodeEmojis(text: string): string {
   return text.replace(/&#x([0-9A-Fa-f]+);/g, (_, hex) =>
     String.fromCodePoint(parseInt(hex, 16)),
   );
@@ -73,7 +74,11 @@ export function sanitizeRichContentHtml(html: string): string {
       pre: ['class'],
     },
     allowedStyles: {
-      span: { 'color': [/.*/], 'background-color': [/.*/], 'text-align': [/.*/] },
+      span: {
+        'color': [/^#[0-9a-fA-F]{3,6}$/, /^rgb\(\d{1,3},\s*\d{1,3},\s*\d{1,3}\)$/, /^[a-z]{3,20}$/],
+        'background-color': [/^#[0-9a-fA-F]{3,6}$/, /^rgb\(\d{1,3},\s*\d{1,3},\s*\d{1,3}\)$/, /^[a-z]{3,20}$/],
+        'text-align': [/^(left|center|right|justify)$/],
+      },
     },
     allowedSchemes: ['http', 'https', 'mailto'],
     allowedSchemesByTag: {
